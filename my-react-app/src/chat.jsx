@@ -5,19 +5,56 @@ import LogoImagem from "./assets/logo.png";
 import PerfilImagem from "./assets/perfil.png";
 
 function Chat() {
+  const [messages, setMessages] = useState([]); 
+  const [currentMessage, setCurrentMessage] = useState('');
 
-  const [messages, setMessages] = useState([]);
-  const [currentMessage, setCurrentMessage] = useState("");
-
-  const handleSetMessage = (event) => {
+  // --- A GRANDE MUDANÇA É AQUI ---
+  const handleSetMessage = async (event) => { // 1. Transforma a função em 'async'
     event.preventDefault();
+    const userMessage = currentMessage.trim(); // 2. Guarda a mensagem do usuário
 
-  if (currentMessage.trim() !== "") {
-    setMessages([...messages, {text: currentMessage, sender: "user"}]);
+    if (userMessage === '') return; // Não faz nada se estiver vazio
 
-    setCurrentMessage("")
-  }
-  }
+    // 3. Adiciona a MENSAGEM DO USUÁRIO imediatamente à tela
+    setMessages(prevMessages => [
+      ...prevMessages, 
+      { text: userMessage, sender: 'user' }
+    ]);
+    
+    // 4. Limpa o input
+    setCurrentMessage('');
+
+    try {
+      // 5. Envia a mensagem do usuário para o seu backend FastAPI
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: userMessage }), // Envia no formato { "text": "..." }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro na resposta da API');
+      }
+
+      const data = await response.json(); // Pega a resposta JSON ({ "response": "..." })
+
+      // 6. Adiciona a RESPOSTA DA IA à tela
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { text: data.response, sender: 'ai' } // 7. Usamos um sender 'ai'
+      ]);
+
+    } catch (error) {
+      console.error("Erro ao conectar com o backend:", error);
+      // Opcional: Adiciona uma mensagem de erro no chat
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { text: 'Não foi possível conectar ao servidor. Tente novamente.', sender: 'ai' }
+      ]);
+    }
+  };
   return (
     <div className="chat-container">
 

@@ -141,3 +141,9 @@ body{
 .input-form button:hover {
     background-color: #1c68c4;
 }
+
+.message.ai-message {
+    align-self: flex-start; 
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+}
