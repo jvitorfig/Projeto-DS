@@ -49,3 +49,13 @@ Os principais tipos de commit se assemelham aos de branches, então deve ser usa
 <br>
 
 # Como configurar o projeto localmente
+## Pré requisitos
+* Git
+* Python
+* Node.js
+
+## Instalação
+* Clone o repositório;
+* Navegue até o diretório
+* Instale os pacotes do Node com "npm install"
+* Configure a chave da API como variável ambiente
