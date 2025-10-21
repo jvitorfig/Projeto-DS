@@ -55,7 +55,7 @@ Os principais tipos de commit se assemelham aos de branches, então deve ser usa
 * Node.js
 
 ## Instalação
-* Clone o repositório;
+* Clone o repositório
 * Navegue até o diretório
 * Instale os pacotes do Node com "npm install"
 * Configure a chave da API como variável ambiente
