@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - Intellecta AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+</head>
+<body>
+
+    <header id="cabecalho">
+        <a href="index.html" class="brand-link" id="h1">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo da Intellecta AI" width="30" height="30">
+            <span id="titulo">Intellecta AI</span>
+        </a>
+        <nav class="botoes">
+            <a href="index.html" id="professor" class="nav-button">Modo Professor</a>
+            <a href="index.html" id="perfil" class="nav-profile" title="Ver perfil">
+                <img src="{{ url_for('static', filename='perfil.png') }}" alt="Ver perfil" width="35" height="35">
+            </a>
+        </nav>
+    </header>
+
+    <main class="corpo">
+
+        <div id="chat-container">
+            <div class="message bot-message">
+                <p>{{ primeira_mensagem }}</p>
+            </div>
+        </div>
+
+        <form class="chat-form">
+            <label for="chat-input" class="visually-hidden">Digite sua mensagem:</label>
+            <input type="text" id="chat-input" name="message" placeholder="Digite sua mensagem aqui">
+            <button type="submit" id="send-button" aria-label="Enviar mensagem">
+                &rarr;
+            </button>
+        </form>
+    </main>
+
+    <script>
+        // Pega os elementos do DOM
+        const chatForm = document.querySelector('.chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatContainer = document.getElementById('chat-container');
+
+        // Adiciona um "escutador" para o envio do formulário
+        chatForm.addEventListener('submit', function(event) {
+            // Previne o comportamento padrão (recarregar a página)
+            event.preventDefault(); 
+
+            const userMessage = chatInput.value.trim();
+
+            if (userMessage) {
+                // 1. Mostra a mensagem do usuário na tela
+                addMessageToChat('user', userMessage);
+
+                // 2. Limpa o input
+                chatInput.value = '';
+                
+                // 3. Envia a mensagem para o back-end (Flask)
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: userMessage })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // 4. Recebe a resposta do bot e mostra na tela
+                    if (data.response) {
+                        addMessageToChat('bot', data.response);
+                    } else if (data.error) {
+                        addMessageToChat('bot', 'Desculpe, ocorreu um erro: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro no fetch:', error);
+                    addMessageToChat('bot', 'Desculpe, não consegui me conectar ao servidor.');
+                });
+            }
+        });
+
+        // Função para adicionar mensagens ao container do chat
+        function addMessageToChat(sender, message) {
+            const messageElement = document.createElement('div');
+            // Adiciona classes 'message' e 'user-message' ou 'bot-message'
+            messageElement.classList.add('message');
+            messageElement.classList.add(sender + '-message');
+            
+            const pElement = document.createElement('p');
+            pElement.textContent = message; // Usar textContent previne XSS
+            
+            messageElement.appendChild(pElement);
+            chatContainer.appendChild(messageElement);
+            
+            // Rola para a mensagem mais recente
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Garante que o container comece rolado para baixo
+        window.addEventListener('load', () => {
+             chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
+
+    </script>
+</body>
+</html>
