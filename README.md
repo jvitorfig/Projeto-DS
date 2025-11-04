@@ -27,8 +27,3 @@ Primeiro, clone este repositório para sua máquina local e navegue até a pasta
 ```bash
 git clone [https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git](https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git)
 cd NOME_DO_REPOSITORIO
-'''
-### 2. Criar um Ambiente Virtual
- 
-# Cria o ambiente virtual
-python -m venv venv
