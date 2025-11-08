@@ -9,7 +9,7 @@ from flask_cors import CORS # Importar o CORS
 
 try:
     # COLOQUE SUA CHAVE DE API REAL AQUI DENTRO DAS ASPAS
-    MINHA_CHAVE_SECRETA = "Uma chave do gemini" 
+    MINHA_CHAVE_SECRETA = "AIzaSyDal8KN8ehO6wNPC3lQod0D-Igx3UObeuA" 
 
     genai.configure(api_key=MINHA_CHAVE_SECRETA)
     print("INFO: Chave da API carregada diretamente do código (Modo de Teste).")
