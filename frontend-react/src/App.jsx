@@ -24,6 +24,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />}/>
         <Route path="/sing-up" element={<SingPage/>} />
+        <Route path="/login" element={<LoginPage/>} />
         <Route 
           path="/chat" 
           element={
