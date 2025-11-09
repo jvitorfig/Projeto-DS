@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import ChatPage from './pages/ChatPage';
-import SingPage from './pages/sing-up'
+import SingPage from './pages/sing-up';
 
 // (Opcional) Simula se o usuário está logado.
 // Em um app real, isso viria de um estado, cookie ou localStorage.
