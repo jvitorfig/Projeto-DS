@@ -87,7 +87,7 @@ function LoginPage() {
       <button type="submit" id="botao">Entrar</button>
 
       <p id="semconta">
-        Não tem uma conta? <a id="linkcadas" href="#">Cadastre-se</a>
+        Não tem uma conta? <a id="linkcadas" href="/sing-up">Cadastre-se</a>
       </p>
     </form>
   );
