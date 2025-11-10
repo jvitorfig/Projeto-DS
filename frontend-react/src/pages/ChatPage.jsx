@@ -78,7 +78,7 @@ function ChatPage() {
           <span id="titulo">Intellecta AI</span>
         </a>
         <nav className="botoes">
-          <a href="#" id="professor" className="nav-button">Questões</a>
+          <a href="/exercicios" id="professor" className="nav-button">Questões</a>
           <a href="#" id="perfil" className="nav-profile" title="Ver perfil">
             <img src={perfil} alt="Ver perfil" width="35" height="35" />
           </a>
