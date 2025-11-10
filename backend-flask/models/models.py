@@ -70,7 +70,7 @@ class Usuario(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
-    senha: Mapped[str] = mapped_column(String(500), nullable=False)
+    senha_hash: Mapped[str] = mapped_column(String(500), nullable=False)
 
     questionario_x_usuario: Mapped[list['QuestionarioXUsuario']] = relationship('QuestionarioXUsuario', back_populates='usuario')
 

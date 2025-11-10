@@ -11,8 +11,8 @@ class UserRepository:
     def get_by_id(self, user_id: int):
         return self.session.query(User).filter(User.id == user_id).first()
 
-    def add(self, name: str, email: str):
-        user = User(name=name, email=email)
+    def add(self, name: str, email: str, senha_hash : str):
+        user = User(name=name, email=email, senha_hash=senha_hash)
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)

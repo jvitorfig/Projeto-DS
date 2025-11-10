@@ -1,19 +1,32 @@
 from ..repositories import UserRepository
 from ..dtos import userDto
+from werkzeug.security import generate_password_hash, check_password_hash
 class UserService:
     def __init__(self, repo: UserRepository):
         self.repo = repo
 
-    def create_user(self, user: userDto):
-        # 👇 Aqui você colocaria validações e regras de negócio
-        if not user.name or not user.email:
-            raise ValueError("Nome e e-mail são obrigatórios.")
+    def create_user(self, name: str, email: str, senha_plain: str):
+        # 👇 Validações
+        if not name or not email or not senha_plain:
+            raise ValueError("Nome, e-mail e senha são obrigatórios.")
         
-        if self.repo.get_by_email(user.email):
+        if self.repo.get_by_email(email):
             raise ValueError("E-mail já cadastrado.")
         
-        return self.repo.add(user.name, user.email)
+        senha_hash = generate_password_hash(senha_plain)
+        
+        # Salva no repositório
+        return self.repo.add(name, email, senha_hash)
 
+    def authenticate_user(self, email: str, senha_plain: str):
+        user = self.repo.get_by_email(email)
+        
+        # Verifica se o usuário existe E se a senha bate com o hash
+        if not user or not check_password_hash(user.senha_hash, senha_plain):
+            raise ValueError("E-mail ou senha inválidos.")
+            
+        return user # Retorna o usuário se for sucesso
+    
     def list_users(self):
         return self.repo.get_all()
 
