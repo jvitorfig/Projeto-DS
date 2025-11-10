@@ -75,6 +75,9 @@ model = genai.GenerativeModel(
     model_name='gemini-pro-latest',
     system_instruction=instrucoes_do_sistema)
 
+model_exercicios = genai.GenerativeModel(
+    model_name="gemini-pro-latest"
+)
 
 # --- Início da Lógica do Servidor Web com Flask ---
 
@@ -184,7 +187,65 @@ def handle_login():
         return jsonify({'success': False, 'error': str(e)}), 401
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
+        
+# Rota 4: Gerar exercícios
+@app.route("/api/generate-exercise", methods=['POST'])
+def generate_exercise():
+    try:
+        topic = request.json.get("topic", "")
 
+        prompt = f"""
+Você é um gerador de exercícios educacionais.
+
+Crie um exercício claro, objetivo e adequado ao nível iniciante sobre:
+
+Tópico: "{topic}"
+
+Regras:
+- Gere apenas o exercício, SEM resposta.
+- Seja simples e didático.
+"""
+
+        # 🔥 Aqui você NÃO usa o chat global
+        response = model_exercicios.generate_content(prompt)
+
+        return jsonify({"exercise": response.text})
+
+    except Exception as e:
+        print("Erro em /api/generate-exercise", e)
+        return jsonify({"error": str(e)}), 500
+
+#Rota 5: Corrigir Exercícios
+@app.route("/api/correct-exercise", methods=['POST'])
+def correct_exercise():
+    try:
+        exercise = request.json.get("exercise", "")
+        answer = request.json.get("answer", "")
+
+        prompt = f"""
+Você é um corretor educacional.
+
+Corrija a resposta do aluno para o exercício abaixo.
+
+Exercício:
+{exercise}
+
+Resposta do aluno:
+{answer}
+
+Escreva:
+1) Correção detalhada
+2) Nota de 0 a 10
+3) Explicação curta do que pode melhorar
+"""
+
+        response = model_exercicios.generate_content(prompt)
+
+        return jsonify({"correction": response.text})
+
+    except Exception as e:
+        print("Erro em /api/correct-exercise", e)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
