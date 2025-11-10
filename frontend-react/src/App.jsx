@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import ChatPage from './pages/ChatPage';
 import SingPage from './pages/sing-up';
+import Exercicio from './pages/Exercicios';
 
 // (Opcional) Simula se o usuário está logado.
 // Em um app real, isso viria de um estado, cookie ou localStorage.
@@ -25,6 +26,7 @@ function App() {
         <Route path="/" element={<LoginPage />}/>
         <Route path="/sing-up" element={<SingPage/>} />
         <Route path="/login" element={<LoginPage/>} />
+        <Route path="/exercicios" element={<Exercicio/>} />
         <Route 
           path="/chat" 
           element={
