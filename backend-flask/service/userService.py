@@ -1,6 +1,6 @@
-from ..repositories import UserRepository
-from ..dtos import userDto
-from werkzeug.security import generate_password_hash, check_password_hash
+from repositories.userRepository import UserRepository
+from dtos.userDto import UserDto
+
 class UserService:
     def __init__(self, repo: UserRepository):
         self.repo = repo
@@ -13,16 +13,14 @@ class UserService:
         if self.repo.get_by_email(email):
             raise ValueError("E-mail já cadastrado.")
         
-        senha_hash = generate_password_hash(senha_plain)
-        
-        # Salva no repositório
-        return self.repo.add(name, email, senha_hash)
+        # Armazena senha em texto plano (sem hash)
+        return self.repo.add(name, email, senha_plain)
 
     def authenticate_user(self, email: str, senha_plain: str):
         user = self.repo.get_by_email(email)
         
-        # Verifica se o usuário existe E se a senha bate com o hash
-        if not user or not check_password_hash(user.senha_hash, senha_plain):
+        # Compara senha em texto plano
+        if not user or user.senha != senha_plain:
             raise ValueError("E-mail ou senha inválidos.")
             
         return user # Retorna o usuário se for sucesso
@@ -42,5 +40,3 @@ class UserService:
             raise ValueError(f"Usuário {user_id} não encontrado.")
         self.repo.delete(user_id)
         return True
-    
-    

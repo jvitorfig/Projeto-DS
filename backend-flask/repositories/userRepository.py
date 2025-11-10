@@ -1,18 +1,18 @@
 from sqlalchemy.orm import Session
-from ..models import User
+from models.models import Usuario
 
 class UserRepository:
     def __init__(self, session: Session):
         self.session = session
 
     def get_all(self):
-        return self.session.query(User).all()
+        return self.session.query(Usuario).all()
 
     def get_by_id(self, user_id: int):
-        return self.session.query(User).filter(User.id == user_id).first()
+        return self.session.query(Usuario).filter(Usuario.id == user_id).first()
 
-    def add(self, name: str, email: str, senha_hash : str):
-        user = User(name=name, email=email, senha_hash=senha_hash)
+    def add(self, name: str, email: str, senha : str):
+        user = Usuario(name=name, email=email, senha=senha)
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)
@@ -25,4 +25,4 @@ class UserRepository:
             self.session.commit()
 
     def get_by_email(self, email: str):
-        return self.session.query(User).filter(User.email == email).first()
+        return self.session.query(Usuario).filter(Usuario.email == email).first()
