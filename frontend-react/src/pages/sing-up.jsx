@@ -1,16 +1,66 @@
-import React from "react";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import logo from '../assets/logo.png'; // Importa a imagem (como no login)
+
+// URL da sua API Flask
+const API_URL = 'http://127.0.0.1:5000';
 
 export default function SignUp() {
+  // 1. Estados para os campos do formulário e erros
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleSubmit = (event) => {
+    // 2. Previne o recarregamento da página
+    event.preventDefault();
+    setError(''); // Limpa erros antigos
+
+    // 3. Validação simples no frontend
+    if (senha !== confirmarSenha) {
+      setError('As senhas não coincidem.');
+      return; // Para a execução
+    }
+
+    // 4. Envia os dados para a API Flask
+    fetch(`${API_URL}/api/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Envia os dados que o backend espera (nome, email, senha)
+      body: JSON.stringify({ nome, email, senha }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        // 5. Processa a resposta
+        if (data.success) {
+          // Sucesso! Navega para a página de login
+          navigate('/login'); 
+        } else {
+          // Mostra erros do backend (ex: "E-mail já cadastrado")
+          setError(data.error || 'Ocorreu um erro ao cadastrar.');
+        }
+      })
+      .catch((err) => {
+        console.error('Erro de conexão:', err);
+        setError('Não foi possível conectar ao servidor.');
+      });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      {/* 6. Liga o formulário à função handleSubmit */}
       <form
         className="login-form bg-white p-8 rounded-2xl shadow-md w-full max-w-md"
-        action="/cadastro"
-        method="post"
+        onSubmit={handleSubmit}
       >
         <header className="login-header flex flex-col items-center mb-6">
           <img
-            src="src/assets/logo.png"
+            src={logo} // Usa a variável importada
             alt="Logo da Intellecta AI"
             width="100"
             height="100"
@@ -25,6 +75,7 @@ export default function SignUp() {
           </p>
         </header>
 
+        {/* 7. Conecta todos os inputs aos seus respectivos estados */}
         <div className="form-group mb-4">
           <label htmlFor="nome" className="h2 block font-medium mb-1">
             Nome Completo
@@ -36,6 +87,8 @@ export default function SignUp() {
             className="input w-full border rounded-lg p-2"
             placeholder="Digite seu nome completo"
             required
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
           />
         </div>
 
@@ -50,6 +103,8 @@ export default function SignUp() {
             className="input w-full border rounded-lg p-2"
             placeholder="Digite seu E-mail"
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
@@ -64,6 +119,8 @@ export default function SignUp() {
             className="input w-full border rounded-lg p-2"
             placeholder="Crie uma senha"
             required
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
           />
         </div>
 
@@ -78,8 +135,13 @@ export default function SignUp() {
             className="input w-full border rounded-lg p-2"
             placeholder="Confirme sua senha"
             required
+            value={confirmarSenha}
+            onChange={(e) => setConfirmarSenha(e.target.value)}
           />
         </div>
+
+        {/* 8. Exibe a mensagem de erro */}
+        {error && <p style={{ color: 'red', fontSize: '0.9rem', textAlign: 'center', marginBottom: '1rem' }}>{error}</p>}
 
         <button
           type="submit"
@@ -90,10 +152,10 @@ export default function SignUp() {
         </button>
 
         <p id="semconta" className="text-center mt-4">
-          Já tem uma conta?{" "}
+          Já tem uma conta?{' '}
           <a
             id="linkcadas"
-            href="/login"
+            href="/login" // Link para a página de login
             className="text-blue-600 hover:underline"
           >
             Faça login
