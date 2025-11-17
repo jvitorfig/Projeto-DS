@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import '../styles/chat.css'; // Importa o CSS de chat
-import logo from '../assets/logo.png'; // Importa o logo
-import perfil from '../assets/perfil.png'; // Importa o perfil
+import '../styles/chat.css'; 
+import logo from '../assets/logo.png'; 
+import perfil from '../assets/perfil.png'; 
 
-// URL da sua API Flask
+
 const API_URL = 'http://127.0.0.1:5000';
 
 function ChatPage() {
-  const [messages, setMessages] = useState([]); // Guarda o histórico de msgs
-  const [input, setInput] = useState(''); // Controla o input
-  const chatContainerRef = useRef(null); // Para rolar o chat para baixo
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState(''); 
+  const chatContainerRef = useRef(null); 
 
-  // 1. Busca a primeira mensagem do bot quando a página carrega
   useEffect(() => {
     fetch(`${API_URL}/api/initial-message`)
       .then(response => response.json())
@@ -22,27 +21,23 @@ function ChatPage() {
         console.error('Erro ao buscar msg inicial:', err);
         setMessages([{ sender: 'bot', text: 'Erro ao conectar. Tente recarregar.' }]);
       });
-  }, []); // O [] vazio faz isso rodar só uma vez
+  }, []); 
 
-  // 2. Efeito para rolar o chat para baixo sempre que 'messages' mudar
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // 3. Função chamada ao enviar o formulário
   const handleSubmit = (event) => {
     event.preventDefault();
     const userMessage = input.trim();
 
     if (userMessage) {
-      // 3.1. Adiciona a mensagem do usuário ao estado
       const newUserMessage = { sender: 'user', text: userMessage };
       setMessages(prevMessages => [...prevMessages, newUserMessage]);
-      setInput(''); // Limpa o input
+      setInput(''); 
 
-      // 3.2. Envia a mensagem para a API Flask
       fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
@@ -52,7 +47,6 @@ function ChatPage() {
       })
       .then(response => response.json())
       .then(data => {
-        // 3.3. Recebe a resposta do bot e adiciona ao estado
         let botMessageText = '';
         if (data.response) {
           botMessageText = data.response;

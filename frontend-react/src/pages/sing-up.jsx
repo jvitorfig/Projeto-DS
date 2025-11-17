@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.png'; // Importa a imagem (como no login)
+import logo from '../assets/logo.png'; 
 
-// URL da sua API Flask
 const API_URL = 'http://127.0.0.1:5000';
 
 export default function SignUp() {
-  // 1. Estados para os campos do formulário e erros
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -15,33 +13,26 @@ export default function SignUp() {
   const navigate = useNavigate();
 
   const handleSubmit = (event) => {
-    // 2. Previne o recarregamento da página
     event.preventDefault();
-    setError(''); // Limpa erros antigos
+    setError(''); 
 
-    // 3. Validação simples no frontend
     if (senha !== confirmarSenha) {
       setError('As senhas não coincidem.');
-      return; // Para a execução
+      return; 
     }
 
-    // 4. Envia os dados para a API Flask
     fetch(`${API_URL}/api/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      // Envia os dados que o backend espera (nome, email, senha)
       body: JSON.stringify({ nome, email, senha }),
     })
       .then((response) => response.json())
       .then((data) => {
-        // 5. Processa a resposta
         if (data.success) {
-          // Sucesso! Navega para a página de login
           navigate('/login'); 
         } else {
-          // Mostra erros do backend (ex: "E-mail já cadastrado")
           setError(data.error || 'Ocorreu um erro ao cadastrar.');
         }
       })
@@ -60,7 +51,7 @@ export default function SignUp() {
       >
         <header className="login-header flex flex-col items-center mb-6">
           <img
-            src={logo} // Usa a variável importada
+            src={logo} 
             alt="Logo da Intellecta AI"
             width="100"
             height="100"
@@ -155,7 +146,7 @@ export default function SignUp() {
           Já tem uma conta?{' '}
           <a
             id="linkcadas"
-            href="/login" // Link para a página de login
+            href="/login" 
             className="text-blue-600 hover:underline"
           >
             Faça login

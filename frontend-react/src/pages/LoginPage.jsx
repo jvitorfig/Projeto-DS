@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../styles/login.css'; // Importa o CSS
-import logo from '../assets/logo.png'; // Importa a imagem
+import '../styles/login.css'; 
+import logo from '../assets/logo.png'; 
 
-// URL da sua API Flask
 const API_URL = 'http://127.0.0.1:5000';
 
 function LoginPage() {
@@ -13,11 +12,9 @@ function LoginPage() {
   const navigate = useNavigate();
 
   const handleSubmit = (event) => {
-    // 1. Previne o recarregamento da página
     event.preventDefault(); 
-    setError(''); // Limpa erros antigos
+    setError(''); 
 
-    // 2. Envia os dados para a API Flask
     fetch(`${API_URL}/api/login`, {
       method: 'POST',
       headers: {
@@ -27,11 +24,9 @@ function LoginPage() {
     })
     .then(response => response.json())
     .then(data => {
-      // 3. Processa a resposta
       if (data.success) {
-        // Sucesso!
-        localStorage.setItem('isLoggedIn', 'true'); // Marca como logado
-        navigate('/chat'); // Navega para a página de chat
+        localStorage.setItem('isLoggedIn', 'true'); 
+        navigate('/chat'); 
       } else {
         setError(data.error || 'Ocorreu um erro.');
       }

@@ -93,3 +93,51 @@ Este projeto deve ser executado em **dois terminais separados**: um para o Backe
 3.  Para testar o login (simulado), use as credenciais definidas no `app.py`:
     * **E-mail:** `aluno@email.com`
     * **Senha:** `1234`
+
+
+# Testes Automatizados
+
+## 3. Testes do Backend (Pytest)
+
+### 1) Ativar o ambiente virtual
+```bash
+source venv/bin/activate
+```
+
+### 2) Instalar dependências mínimas para teste
+```bash
+python -m pip install google-generativeai
+python -m pip install -U pip
+python -m pip install "flask>=3,<4" flask-cors "sqlalchemy>=2" "psycopg[binary]>=3.2" pytest pytest-cov pytest-mock
+```
+
+### 3) Rodar os testes com cobertura
+```bash
+export APP_ENV=TEST
+python -m pytest --cov=. --cov-report=term-missing
+```
+
+## 4. Testes do Frontend (Jest + RTL)
+
+### Acesse a pasta:
+```bash
+cd frontend-react
+```
+
+### Instalar dependências (caso ainda não tenha feito)
+```bash
+npm install
+```
+
+### Rodar a suíte completa de testes:
+```bash
+npm test
+```
+
+O Jest automaticamente executará os arquivos em:
+```
+src/pages/__tests__/*.test.jsx
+```
+
+Nenhuma outra configuração adicional é necessária.
+```

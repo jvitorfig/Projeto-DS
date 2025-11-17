@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import '../styles/exercicios.css'; // ✅ Importando o CSS
+import '../styles/exercicios.css'; 
 
 export default function ExercicioAI() {
   const [topic, setTopic] = useState("");
@@ -14,7 +14,6 @@ export default function ExercicioAI() {
 
   const navigate = useNavigate();
 
-  // ✅ GERAR EXERCÍCIO
   const gerarExercicio = async () => {
     if (!topic.trim()) return;
 
@@ -40,7 +39,6 @@ export default function ExercicioAI() {
     setLoadingExercise(false);
   };
 
-  // ✅ CORRIGIR EXERCÍCIO
   const corrigirExercicio = async () => {
     if (!answer.trim()) return;
 
@@ -68,12 +66,10 @@ export default function ExercicioAI() {
     <div className="ex-page">
       <div className="ex-container">
 
-        {/* ✅ Botão voltar */}
         <button className="ex-back-btn" onClick={() => navigate("/chat")}>
           <ArrowLeft size={20} /> Voltar ao Chat
         </button>
 
-        {/* ✅ Título */}
         <h1 className="ex-title">
           Criador e Corretor de Exercícios — <span>Intellecta AI</span>
         </h1>
@@ -82,7 +78,6 @@ export default function ExercicioAI() {
           Gere exercícios personalizados com IA e envie sua resposta para correção automática.
         </p>
 
-        {/* ✅ Campo do tópico */}
         <label className="ex-label">Tópico do Exercício</label>
         <input
           type="text"
@@ -100,7 +95,6 @@ export default function ExercicioAI() {
           {loadingExercise ? "Gerando exercício..." : "Gerar Exercício"}
         </button>
 
-        {/* ✅ Exercício gerado */}
         {exercise && (
           <div className="ex-section">
             <h3 className="ex-section-title">Exercício Gerado</h3>
@@ -108,7 +102,6 @@ export default function ExercicioAI() {
           </div>
         )}
 
-        {/* ✅ Área de resposta */}
         {exercise && (
           <>
             <h2 className="ex-section-title">Sua Resposta</h2>
@@ -130,7 +123,6 @@ export default function ExercicioAI() {
           </>
         )}
 
-        {/* ✅ Correção */}
         {correction && (
           <div className="ex-section">
             <h3 className="ex-section-title">Correção</h3>
