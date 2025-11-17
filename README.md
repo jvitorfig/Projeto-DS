@@ -138,5 +138,3 @@ O Jest automaticamente executará os arquivos em:
 ```
 src/pages/__tests__/*.test.jsx
 ```
-
-Nenhuma outra configuração adicional é necessária.
