@@ -95,7 +95,7 @@ Este projeto deve ser executado em **dois terminais separados**: um para o Backe
     * **Senha:** `1234`
 
 
-# Testes Automatizados
+## Testes Automatizados
 
 ## 3. Testes do Backend (Pytest)
 
@@ -140,4 +140,3 @@ src/pages/__tests__/*.test.jsx
 ```
 
 Nenhuma outra configuração adicional é necessária.
-```
