@@ -155,3 +155,74 @@
   margin-right: auto;
   white-space: pre-wrap;
 }
+
+.alternativas-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.alt-btn {
+    padding: 15px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+    color: #333;
+}
+
+.alt-btn:hover:not(:disabled) {
+    background-color: #f0f0f0;
+    border-color: #bbb;
+}
+
+.alt-btn.selected {
+    border-color: #646cff; /* Cor roxa/azul do tema */
+    background-color: #eef0ff;
+    font-weight: bold;
+}
+
+/* Container base da correção */
+.correction-box {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+/* ✅ ESTILO DE SUCESSO (ACERTOU) */
+.correction-box.success {
+    background-color: #d1fae5; /* Verde claro (Fundo) */
+    border-color: #34d399;     /* Borda verde média */
+    color: #064e3b;            /* Verde MUITO escuro (Texto) */
+}
+
+/* ❌ ESTILO DE ERRO (ERROU) */
+.correction-box.error {
+    background-color: #fee2e2; /* Vermelho claro (Fundo) */
+    border-color: #f87171;     /* Borda vermelha média */
+    color: #7f1d1d;            /* Vermelho MUITO escuro (Texto) */
+}
+
+/* Força os títulos e textos dentro da caixa a herdarem a cor escura */
+.correction-box h3,
+.correction-box p,
+.correction-box strong,
+.correction-box span {
+    color: inherit; /* Pega a cor definida acima (verde escuro ou vermelho escuro) */
+}
+
+/* Ajuste específico para o ícone alinhar com o texto */
+.correction-box .ex-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+}

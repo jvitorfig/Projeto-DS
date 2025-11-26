@@ -62,7 +62,7 @@ Este projeto deve ser executado em **dois terminais separados**: um para o Backe
     ```bash
     pip install -r requirements.txt
     ```
-    *(Se você não criou o `requirements.txt`, rode: `pip install flask flask-cors google-generativeai`)*
+    *(Se você não criou o `requirements.txt`, rode: `pip install flask flask-cors google-generativeai sqlalchemy psycopg`)*
 5.  Rode o servidor Flask:
     ```bash
     python app.py
