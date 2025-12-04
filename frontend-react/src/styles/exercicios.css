@@ -8,6 +8,8 @@
     background-color: #f9f9f9; /* Fundo cinza bem claro */
     min-height: 100vh;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333; 
+    width: 100%;
 }
 
 .ex-container {

@@ -46,7 +46,7 @@ function LoginPage() {
   };
 
   return (
-    
+    <div className="login-body">
     <form className="login-form" onSubmit={handleSubmit}>
       <header className="login-header">
         <img src={logo} alt="Logo da Intellecta AI" width="150" height="150" />
@@ -94,6 +94,7 @@ function LoginPage() {
         Não tem uma conta? <a id="linkcadas" href="/sing-up">Cadastre-se</a>
       </p>
     </form>
+    </div>
   );
 }
 

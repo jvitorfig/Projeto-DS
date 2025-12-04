@@ -72,6 +72,7 @@ function ChatPage() {
 
   return (
     <>
+    <div className="chat-layout">
       <header id="cabecalho">
         <a href="#" className="brand-link" id="h1">
           <img src={logo} alt="Logo da Intellecta AI" width="30" height="30" />
@@ -110,6 +111,7 @@ function ChatPage() {
           </button>
         </form>
       </main>
+      </div>
     </>
   );
 }

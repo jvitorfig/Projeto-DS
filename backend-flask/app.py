@@ -26,7 +26,7 @@ except ImportError:
 
 # --- Configuração do Gemini (Sem Alterações) ---
 # ... (seu código de configuração do Gemini vai aqui) ...
-MINHA_CHAVE_SECRETA = "AIzaSyBPJ-NI0Epic29UK4qu1UKj_OWdXK-XTbE" 
+MINHA_CHAVE_SECRETA = "AIzaSyBlwFvKwECM5lotVjBJGuCj55qGWct-7Es" 
 genai.configure(api_key=MINHA_CHAVE_SECRETA)
 instrucoes_do_sistema = """
 # PERSONA   

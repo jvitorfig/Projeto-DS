@@ -12,35 +12,37 @@ export default function Estatisticas() {
   const userId = localStorage.getItem('userId'); 
 
   useEffect(() => {
+    // 1. Verificação de Segurança
     if (!userId) {
         alert("Você precisa fazer login para ver suas estatísticas.");
         navigate("/login");
         return;
     }
-    fetchStats();
-  }, [userId]); // Adicione userId na dependência
-  // ----------------------
 
-  const fetchStats = async () => {
-    try {
-      // O userId já está sendo usado corretamente na URL aqui:
-      const response = await fetch(`http://127.0.0.1:5000/api/user-stats/${userId}`);
-      // ... resto da função igual ...
-      const data = await response.json();
-      
-      if (data.stats) {
-        setStats(data.stats);
-        setGlobalData({ 
-            average: data.global_average, 
-            total: data.total_questions 
-        });
+    // 2. Definimos a função DENTRO do useEffect para evitar erros de ordem
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000/api/user-stats/${userId}`);
+        const data = await response.json();
+        
+        if (data.stats) {
+          setStats(data.stats);
+          setGlobalData({ 
+              average: data.global_average, 
+              total: data.total_questions 
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao buscar estatísticas:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Erro ao buscar estatísticas:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    // 3. Chamamos a função
+    fetchStats();
+
+  }, [userId, navigate]); // Dependências do useEffect
 
   return (
     <div className="ex-page">
