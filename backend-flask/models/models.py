@@ -134,6 +134,8 @@ class HistoricoExercicio(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     id_usuario: Mapped[int] = mapped_column(Integer, nullable=False)
     
+    topico: Mapped[str] = mapped_column(String(200), nullable=True) 
+
     # O que foi gerado e respondido
     enunciado_exercicio: Mapped[str] = mapped_column(Text, nullable=False)
     resposta_aluno: Mapped[str] = mapped_column(Text, nullable=False)

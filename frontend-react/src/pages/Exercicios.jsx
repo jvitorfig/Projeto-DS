@@ -1,34 +1,33 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle } from "lucide-react"; // Adicionei ícones opcionais
+import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import '../styles/exercicios.css';
 
 export default function ExercicioAI() {
   const [topic, setTopic] = useState("");
-  
-  // O exercício agora é um objeto (ou null), não uma string vazia
   const [exerciseData, setExerciseData] = useState(null); 
-  
-  const [selectedAnswer, setSelectedAnswer] = useState(""); // Qual botão o usuário clicou
-  const [correction, setCorrection] = useState(null); // Correção agora pode ser objeto também
-  
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [correction, setCorrection] = useState(null);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [loadingCorrection, setLoadingCorrection] = useState(false);
-
-  // IMPORTANTE: Idealmente você pega isso do contexto de autenticação/Login
-  const userId = 1; 
-
   const navigate = useNavigate();
 
-  // ✅ GERAR EXERCÍCIO (MÚLTIPLA ESCOLHA)
+  const userId = localStorage.getItem('userId');
+  useEffect(() => {
+      if (!userId) {
+          navigate("/login");
+      }
+    }, [userId, navigate]);
+
+  // ✅ GERAR EXERCÍCIO
   const gerarExercicio = async () => {
     if (!topic.trim()) return;
 
     setLoadingExercise(true);
-    setExerciseData(null); // Reseta o exercício anterior
-    setCorrection(null);   // Reseta a correção anterior
-    setSelectedAnswer(""); // Reseta a seleção
+    setExerciseData(null);
+    setCorrection(null);
+    setSelectedAnswer("");
 
     try {
       const response = await fetch("http://127.0.0.1:5000/api/generate-exercise", {
@@ -39,11 +38,9 @@ export default function ExercicioAI() {
 
       const data = await response.json();
       
-      // Se a API retornar erro ou não tiver as chaves certas
       if (data.error) {
         alert("Erro na IA: " + data.error);
       } else {
-        // Salva o objeto completo (enunciado + alternativas)
         setExerciseData(data);
       }
       
@@ -69,14 +66,15 @@ export default function ExercicioAI() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          exercise: exerciseData, // Envia o objeto todo da questão
-          answer: selectedAnswer, // Envia a letra/texto escolhido
-          user_id: userId         // Necessário para salvar no banco
+          exercise: exerciseData,
+          answer: selectedAnswer,
+          user_id: userId,
+          topic: topic // <--- ATUALIZADO: Enviando o tópico para salvar estatísticas
         }),
       });
 
       const data = await response.json();
-      setCorrection(data); // Salva a resposta da correção (nota, acertou, texto)
+      setCorrection(data);
       
     } catch (err) {
       console.error(err);
@@ -90,26 +88,27 @@ export default function ExercicioAI() {
     <div className="ex-page">
       <div className="ex-container">
 
-        <button className="ex-back-btn" onClick={() => navigate("/chat")}>
-          <ArrowLeft size={20} /> Voltar ao Chat
-        </button>
+        {/* Botão para ver estatísticas */}
+        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '20px'}}>
+            <button className="ex-back-btn" onClick={() => navigate("/chat")}>
+                <ArrowLeft size={20} /> Voltar
+            </button>
+            <button className="ex-back-btn" onClick={() => navigate("/estatisticas")} style={{backgroundColor: '#646cff', color: 'white', border: 'none'}}>
+                Ver Minhas Estatísticas 📊
+            </button>
+        </div>
 
         <h1 className="ex-title">
           Praticar com <span>Intellecta AI</span>
         </h1>
 
-        <p className="ex-subtitle">
-          Escolha um tópico e teste seus conhecimentos com questões de múltipla escolha.
-        </p>
-
-        {/* INPUT DE TÓPICO */}
         <div className="input-group">
             <label className="ex-label">Sobre o que você quer estudar?</label>
             <div style={{ display: 'flex', gap: '10px' }}>
                 <input
                 type="text"
                 className="ex-input"
-                placeholder="Ex: Revolução Francesa, Ponteiros em C, Logaritmos..."
+                placeholder="Ex: Revolução Francesa, Logaritmos..."
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 />
@@ -126,31 +125,27 @@ export default function ExercicioAI() {
 
         <hr className="divider" />
 
-        {/* ÁREA DO EXERCÍCIO */}
         {exerciseData && (
           <div className="ex-section animate-fade-in">
             <h3 className="ex-section-title">Questão:</h3>
             
-            {/* Enunciado */}
             <div className="ex-box enunciado">
                 <ReactMarkdown>{exerciseData.enunciado}</ReactMarkdown>
             </div>
 
-            {/* Alternativas (Botões) */}
             <div className="alternativas-container">
                 {exerciseData.alternativas && exerciseData.alternativas.map((alt, index) => (
                     <button 
                         key={index} 
                         className={`alt-btn ${selectedAnswer === alt ? 'selected' : ''}`}
-                        onClick={() => !correction && setSelectedAnswer(alt)} // Trava clique se já corrigiu
-                        disabled={!!correction} // Desabilita botões após corrigir
+                        onClick={() => !correction && setSelectedAnswer(alt)}
+                        disabled={!!correction}
                     >
                         {alt}
                     </button>
                 ))}
             </div>
 
-            {/* Botão de Enviar (Só aparece se não tiver corrigido ainda) */}
             {!correction && (
                 <button
                 onClick={corrigirExercicio}
@@ -164,11 +159,10 @@ export default function ExercicioAI() {
           </div>
         )}
 
-        {/* ÁREA DA CORREÇÃO */}
         {correction && (
           <div className={`ex-section correction-box ${correction.acertou ? 'success' : 'error'}`}>
-            <h3 className="ex-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {correction.acertou ? <CheckCircle color="green"/> : <XCircle color="red"/>}
+            <h3 className="ex-section-title">
+                {correction.acertou ? <CheckCircle /> : <XCircle />}
                 {correction.acertou ? "Você Acertou!" : "Não foi dessa vez..."}
             </h3>
             

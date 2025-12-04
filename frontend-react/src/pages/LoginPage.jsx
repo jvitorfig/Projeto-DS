@@ -29,9 +29,12 @@ function LoginPage() {
     .then(data => {
       // 3. Processa a resposta
       if (data.success) {
-        // Sucesso!
-        localStorage.setItem('isLoggedIn', 'true'); // Marca como logado
-        navigate('/chat'); // Navega para a página de chat
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('userId', data.user.id);   // Salva o ID
+        localStorage.setItem('userName', data.user.nome); // Salva o Nome 
+        
+        console.log("Login salvo para ID:", data.user.id); // Debug
+        navigate('/chat'); 
       } else {
         setError(data.error || 'Ocorreu um erro.');
       }
@@ -43,6 +46,7 @@ function LoginPage() {
   };
 
   return (
+    
     <form className="login-form" onSubmit={handleSubmit}>
       <header className="login-header">
         <img src={logo} alt="Logo da Intellecta AI" width="150" height="150" />
