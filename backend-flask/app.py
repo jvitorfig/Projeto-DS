@@ -5,6 +5,10 @@ import google.generativeai as genai
 import os
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+from dotenv import load_dotenv
+load_dotenv()
+
+from config import GEMINI_API_KEY  # <-- NOVO
 
 # --- Importações da sua nova arquitetura ---
 # (Assumindo que seus arquivos estão em pastas/módulos corretos)
@@ -14,7 +18,7 @@ try:
     from models.models import Base, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
-    from dtos.userDto import UserDto # Embora não seja usado diretamente aqui, é bom saber
+    from dtos.userDto import UserDto  # Embora não seja usado diretamente aqui, é bom saber
 except ImportError:
     print("ERRO DE IMPORTAÇÃO: Verifique sua estrutura de pastas e __init__.py")
     # Tente imports locais se estiver tudo na mesma pasta (menos ideal)
@@ -24,10 +28,10 @@ except ImportError:
     from service.userService import UserService
 
 
-# --- Configuração do Gemini (Sem Alterações) ---
-# ... (seu código de configuração do Gemini vai aqui) ...
-MINHA_CHAVE_SECRETA = "AIzaSyBlwFvKwECM5lotVjBJGuCj55qGWct-7Es" 
-genai.configure(api_key=MINHA_CHAVE_SECRETA)
+# --- Configuração do Gemini (AGORA SEM CHAVE HARD-CODED) ---
+
+genai.configure(api_key=GEMINI_API_KEY)
+
 instrucoes_do_sistema = """
 # PERSONA   
 Você é um Tutor Socrático, um especialista em aprendizado e um mentor de estudos. Seu nome é "Mentor". Seu objetivo principal não é dar respostas, mas sim guiar o estudante a construir o próprio conhecimento, garantindo que a base seja sólida. Você é paciente, encorajador e extremamente curioso sobre o processo de pensamento do estudante.
@@ -71,21 +75,22 @@ Após o aluno indicar o tópico, inicie a investigação aprofundada. Esta é a 
 3.  Use analogias e exemplos simples para explicar o conceito fundamental.
 4.  Após a explicação, verifique a compreensão pedindo para o estudante explicar de volta ou resolver um problema bem mais simples.
     * *Exemplo:* "Isso ajudou a clarear as coisas? Com base nisso, como você resolveria este pequeno problema [problema simples]?"
-""" # Suas instruções
-model = genai.GenerativeModel(    
-    model_name='gemini-pro-latest',
-    system_instruction=instrucoes_do_sistema)
+"""  # Suas instruções
 
+model = genai.GenerativeModel(
+    model_name='gemini-pro-latest',
+    system_instruction=instrucoes_do_sistema
+)
 
 model_exercicios = genai.GenerativeModel(
-    model_name="gemini-pro-latest", 
+    model_name="gemini-pro-latest",
     generation_config={"response_mime_type": "application/json"}
 )
 
 # --- Início da Lógica do Servidor Web com Flask ---
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
 
 # --- Criação das Tabelas ---
 # Ao iniciar o app, ele garante que as tabelas do models.py existam
@@ -103,6 +108,7 @@ def create_session():
     """Abre uma nova sessão no início de cada request."""
     g.session = SessionLocal()
 
+
 @app.teardown_request
 def close_session(e=None):
     """Fecha a sessão no final de cada request."""
@@ -111,7 +117,7 @@ def close_session(e=None):
         session.close()
 
 
-# --- Lógica do Chat (Sem Alterações) ---
+# --- Lógica do Chat ---
 try:
     chat = model.start_chat(history=[])
     inicial_response = chat.send_message("Ola")
@@ -120,13 +126,14 @@ except Exception as e:
     print(f"Erro ao inicializar o chat com o Gemini: {e}")
     PRIMEIRA_MENSAGEM_MENTOR = "Olá! Tive um problema para me conectar. Por favor, tente recarregar a página."
 
+
 @app.route("/chat", methods=['POST'])
 def handle_chat():
     try:
         user_message = request.json['message']
         response = chat.send_message(user_message)
         return jsonify({'response': response.text})
-    
+
     except Exception as e:
         print(f"Erro no endpoint /chat: {e}")
         return jsonify({'error': str(e)}), 500
@@ -135,10 +142,9 @@ def handle_chat():
 @app.route("/api/initial-message", methods=['GET'])
 def get_initial_message():
     return jsonify({'message': PRIMEIRA_MENSAGEM_MENTOR})
-# --- Fim da Lógica do Chat ---
 
 
-# --- ROTAS DE AUTENTICAÇÃO (Totalmente Reescritas) ---
+# --- ROTAS DE AUTENTICAÇÃO ---
 
 @app.route("/api/register", methods=['POST'])
 def handle_register():
@@ -148,24 +154,23 @@ def handle_register():
     senha = data.get('senha')
 
     try:
-        # 1. Instanciamos os serviços com a sessão do request (g.session)
         repo = UserRepository(g.session)
         service = UserService(repo)
-        
-        # 2. Chamamos o serviço (que precisa ser ajustado para senhas)
-        #    (Veja a Seção 2 abaixo!)
+
         new_user = service.create_user(nome, email, senha)
-        
-        return jsonify({'success': True, 'message': 'Usuário cadastrado com sucesso!', 'user_id': new_user.id}), 201
-    
+
+        return jsonify({
+            'success': True,
+            'message': 'Usuário cadastrado com sucesso!',
+            'user_id': new_user.id
+        }), 201
+
     except ValueError as e:
-        # Erros de negócio (ex: "E-mail já existe")
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        # Erros inesperados
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
 
-#Rota 3: Login
+
 @app.route("/api/login", methods=['POST'])
 def handle_login():
     data = request.json
@@ -180,9 +185,9 @@ def handle_login():
         service = UserService(repo)
 
         user = service.authenticate_user(email, senha)
-        
+
         return jsonify({
-            'success': True, 
+            'success': True,
             'message': 'Login bem-sucedido!',
             'user': {
                 'id': user.id,
@@ -194,8 +199,9 @@ def handle_login():
         return jsonify({'success': False, 'error': str(e)}), 401
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
-        
-# Rota 4: Gerar exercícios
+
+
+# --- Rota: Gerar exercícios ---
 @app.route("/api/generate-exercise", methods=['POST'])
 def generate_exercise():
     try:
@@ -221,23 +227,18 @@ def generate_exercise():
         """
 
         response = model_exercicios.generate_content(prompt)
-        
-        # Obtém o texto da resposta com segurança
+
         try:
             texto_bruto = response.text
         except Exception:
-            # Fallback caso o objeto response venha diferente
             texto_bruto = str(response)
 
-        print("DEBUG RAW:", texto_bruto[:100]) # Log para conferência
+        print("DEBUG RAW:", texto_bruto[:100])
 
-        # --- A MÁGICA DO REGEX (CORREÇÃO) ---
-        # Procura pelo padrão JSON: Começa com { e termina com }
-        # re.DOTALL faz o ponto (.) pegar também quebras de linha
         match = re.search(r"\{[\s\S]*\}", texto_bruto)
 
         if match:
-            json_limpo = match.group(0) # Pega apenas o conteúdo JSON
+            json_limpo = match.group(0)
             try:
                 exercicio_json = json.loads(json_limpo)
                 return jsonify(exercicio_json)
@@ -252,6 +253,7 @@ def generate_exercise():
         print("Erro CRÍTICO em /api/generate-exercise", e)
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/api/correct-exercise", methods=['POST'])
 def correct_exercise():
     try:
@@ -259,13 +261,11 @@ def correct_exercise():
         exercise_data = data.get("exercise", "")
         answer = data.get("answer", "")
         user_id = data.get("user_id")
-        topic = data.get("topic")  # <--- Importante: Pegando o tópico para as estatísticas
+        topic = data.get("topic")
 
-        # Validação básica
         if not user_id:
             return jsonify({"error": "user_id é obrigatório"}), 400
 
-        # Prompt para a IA corrigir
         prompt = f"""
         Você é um corretor de provas.
         
@@ -288,40 +288,34 @@ def correct_exercise():
         }}
         """
 
-        # Chamada à IA
         response = model_exercicios.generate_content(prompt)
-        
-        # Limpeza e Extração do JSON da resposta
+
         try:
             texto_bruto = response.text
-            # Regex para pegar apenas o JSON (ignora textos extras)
             match = re.search(r"\{[\s\S]*\}", texto_bruto)
             if match:
                 dados_correcao = json.loads(match.group(0))
             else:
                 raise ValueError("JSON não encontrado na resposta da IA")
         except Exception:
-            # Fallback caso a IA não retorne JSON perfeito
             dados_correcao = {
                 "correcao_detalhada": response.text,
                 "nota": 0,
                 "acertou": False
             }
 
-        # --- SALVAR NO BANCO ---
-        # Converte o objeto do exercício para string para salvar no banco
         enunciado_str = json.dumps(exercise_data, ensure_ascii=False) if isinstance(exercise_data, dict) else str(exercise_data)
 
         novo_historico = HistoricoExercicio(
             id_usuario=user_id,
-            topico=topic,  # Salvando o tópico
+            topico=topic,
             enunciado_exercicio=enunciado_str,
             resposta_aluno=answer,
             feedback_ia=dados_correcao["correcao_detalhada"],
             nota=dados_correcao["nota"],
             acertou=dados_correcao["acertou"]
         )
-        
+
         g.session.add(novo_historico)
         g.session.commit()
 
@@ -333,18 +327,16 @@ def correct_exercise():
         })
 
     except Exception as e:
-        # ⚠️ ESTE É O BLOCO QUE ESTAVA FALTANDO OU DESALINHADO
         print("Erro em /api/correct-exercise", e)
-        # Importante: Desfazer a transação do banco se der erro
         if hasattr(g, 'session'):
             g.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-# --- ROTA: Estatísticas (NOVA) ---
+
+# --- ROTA: Estatísticas ---
 @app.route("/api/user-stats/<int:user_id>", methods=['GET'])
 def get_user_stats(user_id):
     try:
-        # Busca todo o histórico desse usuário
         historico = g.session.query(HistoricoExercicio).filter(
             HistoricoExercicio.id_usuario == user_id
         ).all()
@@ -352,24 +344,19 @@ def get_user_stats(user_id):
         if not historico:
             return jsonify({"stats": [], "global_average": 0, "total_questions": 0})
 
-        # Processamento dos dados (Agrupamento por Tópico)
         stats_by_topic = {}
-        
+
         for h in historico:
-            # Usa 'Geral' se o tópico for None ou vazio
             topic_name = h.topico if h.topico else "Geral"
-            
-            # Normaliza o nome do tópico (ex: "matemática" e "Matemática" viram o mesmo)
             topic_key = topic_name.strip().title()
 
             if topic_key not in stats_by_topic:
                 stats_by_topic[topic_key] = {"total": 0, "acertos": 0}
-            
+
             stats_by_topic[topic_key]["total"] += 1
             if h.acertou:
                 stats_by_topic[topic_key]["acertos"] += 1
 
-        # Formata para enviar ao Frontend
         final_stats = []
         total_questions = 0
         total_correct = 0
@@ -382,13 +369,12 @@ def get_user_stats(user_id):
                 "acertos": data["acertos"],
                 "percent": percent
             })
-            
+
             total_questions += data["total"]
             total_correct += data["acertos"]
 
         global_avg = round((total_correct / total_questions) * 100, 1) if total_questions > 0 else 0
 
-        # Ordena por % de acerto (opcional)
         final_stats.sort(key=lambda x: x['percent'], reverse=True)
 
         return jsonify({
@@ -398,9 +384,11 @@ def get_user_stats(user_id):
         })
 
     except Exception as e:
-        print("Erro em /api/correct-exercise", e)
-        g.session.rollback()
+        print("Erro em /api/user-stats", e)
+        if hasattr(g, 'session'):
+            g.session.rollback()
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
