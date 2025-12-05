@@ -1,26 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import '../styles/exercicios.css'; 
+import '../styles/exercicios.css';
 
 export default function ExercicioAI() {
   const [topic, setTopic] = useState("");
-  const [exercise, setExercise] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [correction, setCorrection] = useState("");
+  const [exerciseData, setExerciseData] = useState(null); 
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [correction, setCorrection] = useState(null);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [loadingCorrection, setLoadingCorrection] = useState(false);
-
   const navigate = useNavigate();
 
+  const userId = localStorage.getItem('userId');
+  useEffect(() => {
+      if (!userId) {
+          navigate("/login");
+      }
+    }, [userId, navigate]);
+
+  // ✅ GERAR EXERCÍCIO
   const gerarExercicio = async () => {
     if (!topic.trim()) return;
 
     setLoadingExercise(true);
-    setExercise("");
-    setCorrection("");
-    setAnswer("");
+    setExerciseData(null);
+    setCorrection(null);
+    setSelectedAnswer("");
 
     try {
       const response = await fetch("http://127.0.0.1:5000/api/generate-exercise", {
@@ -30,33 +37,48 @@ export default function ExercicioAI() {
       });
 
       const data = await response.json();
-      setExercise(data.exercise || "Erro ao gerar exercício.");
+      
+      if (data.error) {
+        alert("Erro na IA: " + data.error);
+      } else {
+        setExerciseData(data);
+      }
+      
     } catch (err) {
       console.error(err);
-      setExercise("Erro ao gerar exercício. Tente novamente.");
+      alert("Erro ao conectar com o servidor.");
     }
 
     setLoadingExercise(false);
   };
 
+  // ✅ CORRIGIR EXERCÍCIO
   const corrigirExercicio = async () => {
-    if (!answer.trim()) return;
+    if (!selectedAnswer) {
+      alert("Por favor, selecione uma alternativa.");
+      return;
+    }
 
     setLoadingCorrection(true);
-    setCorrection("");
 
     try {
       const response = await fetch("http://127.0.0.1:5000/api/correct-exercise", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ exercise, answer }),
+        body: JSON.stringify({ 
+          exercise: exerciseData,
+          answer: selectedAnswer,
+          user_id: userId,
+          topic: topic // <--- ATUALIZADO: Enviando o tópico para salvar estatísticas
+        }),
       });
 
       const data = await response.json();
-      setCorrection(data.correction || "Erro ao corrigir.");
+      setCorrection(data);
+      
     } catch (err) {
       console.error(err);
-      setCorrection("Erro ao corrigir. Tente novamente.");
+      alert("Erro ao corrigir.");
     }
 
     setLoadingCorrection(false);
@@ -66,67 +88,93 @@ export default function ExercicioAI() {
     <div className="ex-page">
       <div className="ex-container">
 
-        <button className="ex-back-btn" onClick={() => navigate("/chat")}>
-          <ArrowLeft size={20} /> Voltar ao Chat
-        </button>
+        {/* Botão para ver estatísticas */}
+        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '20px'}}>
+            <button className="ex-back-btn" onClick={() => navigate("/chat")}>
+                <ArrowLeft size={20} /> Voltar
+            </button>
+            <button className="ex-back-btn" onClick={() => navigate("/estatisticas")} style={{backgroundColor: '#646cff', color: 'white', border: 'none'}}>
+                Ver Minhas Estatísticas 📊
+            </button>
+        </div>
 
         <h1 className="ex-title">
-          Criador e Corretor de Exercícios — <span>Intellecta AI</span>
+          Praticar com <span>Intellecta AI</span>
         </h1>
 
-        <p className="ex-subtitle">
-          Gere exercícios personalizados com IA e envie sua resposta para correção automática.
-        </p>
+        <div className="input-group">
+            <label className="ex-label">Sobre o que você quer estudar?</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                type="text"
+                className="ex-input"
+                placeholder="Ex: Revolução Francesa, Logaritmos..."
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                />
+                <button
+                onClick={gerarExercicio}
+                disabled={loadingExercise}
+                className="ex-btn"
+                style={{ width: 'auto', whiteSpace: 'nowrap' }}
+                >
+                {loadingExercise ? "Gerando..." : "Gerar Questão"}
+                </button>
+            </div>
+        </div>
 
-        <label className="ex-label">Tópico do Exercício</label>
-        <input
-          type="text"
-          className="ex-input"
-          placeholder="Ex: Derivadas, Matrizes, Probabilidade..."
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-        />
+        <hr className="divider" />
 
-        <button
-          onClick={gerarExercicio}
-          disabled={loadingExercise}
-          className="ex-btn"
-        >
-          {loadingExercise ? "Gerando exercício..." : "Gerar Exercício"}
-        </button>
+        {exerciseData && (
+          <div className="ex-section animate-fade-in">
+            <h3 className="ex-section-title">Questão:</h3>
+            
+            <div className="ex-box enunciado">
+                <ReactMarkdown>{exerciseData.enunciado}</ReactMarkdown>
+            </div>
 
-        {exercise && (
-          <div className="ex-section">
-            <h3 className="ex-section-title">Exercício Gerado</h3>
-            <div className="ex-box"><ReactMarkdown>{exercise}</ReactMarkdown></div>
+            <div className="alternativas-container">
+                {exerciseData.alternativas && exerciseData.alternativas.map((alt, index) => (
+                    <button 
+                        key={index} 
+                        className={`alt-btn ${selectedAnswer === alt ? 'selected' : ''}`}
+                        onClick={() => !correction && setSelectedAnswer(alt)}
+                        disabled={!!correction}
+                    >
+                        {alt}
+                    </button>
+                ))}
+            </div>
+
+            {!correction && (
+                <button
+                onClick={corrigirExercicio}
+                disabled={loadingCorrection || !selectedAnswer}
+                className="ex-btn purple"
+                style={{ marginTop: '20px' }}
+                >
+                {loadingCorrection ? "Corrigindo..." : "Confirmar Resposta"}
+                </button>
+            )}
           </div>
         )}
 
-        {exercise && (
-          <>
-            <h2 className="ex-section-title">Sua Resposta</h2>
-
-            <textarea
-              className="ex-textarea"
-              placeholder="Digite sua resposta aqui..."
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-            />
-
-            <button
-              onClick={corrigirExercicio}
-              disabled={loadingCorrection}
-              className="ex-btn purple"
-            >
-              {loadingCorrection ? "Corrigindo..." : "Enviar para Correção"}
-            </button>
-          </>
-        )}
-
         {correction && (
-          <div className="ex-section">
-            <h3 className="ex-section-title">Correção</h3>
-            <div className="ex-box">{correction}</div>
+          <div className={`ex-section correction-box ${correction.acertou ? 'success' : 'error'}`}>
+            <h3 className="ex-section-title">
+                {correction.acertou ? <CheckCircle /> : <XCircle />}
+                {correction.acertou ? "Você Acertou!" : "Não foi dessa vez..."}
+            </h3>
+            
+            <p><strong>Nota:</strong> {correction.nota}/10</p>
+            
+            <div className="ex-box" style={{ background: 'transparent', border: 'none', padding: '0' }}>
+                <ReactMarkdown>{correction.correction || correction.correcao_detalhada}</ReactMarkdown>
+            </div>
+            
+            <button onClick={gerarExercicio} className="ex-btn" style={{ marginTop: '15px' }}>
+                Próxima Questão
+            </button>
           </div>
         )}
 

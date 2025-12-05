@@ -1,8 +1,20 @@
-body {
+/*body {
     background-color: #121212;
     font-family: Arial, Helvetica, sans-serif;
     color: white;
     margin: 0; 
+}*/
+.chat-layout {
+    background-color: #121212;
+    font-family: Arial, Helvetica, sans-serif;
+    color: white;
+    margin: 0;
+    
+    /* Propriedades essenciais para ocupar a tela toda como o body fazia */
+    min-height: 100vh;
+    width: 100%;
+    position: relative; /* Ajuda no posicionamento dos filhos */
+    overflow-x: hidden; /* Evita rolagem lateral indesejada */
 }
 
 header#cabecalho {
@@ -11,7 +23,7 @@ header#cabecalho {
     left: 0;
     width: 100%;
     height: 60px;
-    
+    z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: space-between;

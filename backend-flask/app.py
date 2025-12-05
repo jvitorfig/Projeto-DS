@@ -1,4 +1,6 @@
 # app.py
+import re
+import json
 import google.generativeai as genai
 import os
 from flask import Flask, request, jsonify, g
@@ -9,7 +11,7 @@ from flask_cors import CORS
 # (Ajuste os imports se sua estrutura de pastas for diferente)
 try:
     from db import SessionLocal, engine
-    from models.models import Base
+    from models.models import Base, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
     from dtos.userDto import UserDto # Embora não seja usado diretamente aqui, é bom saber
@@ -17,18 +19,17 @@ except ImportError:
     print("ERRO DE IMPORTAÇÃO: Verifique sua estrutura de pastas e __init__.py")
     # Tente imports locais se estiver tudo na mesma pasta (menos ideal)
     from db import SessionLocal, engine
-    from models.models import Base, Usuario
+    from models.models import Base, Usuario, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
-    from dtos.userDto import UserDto
 
 
 # --- Configuração do Gemini (Sem Alterações) ---
 # ... (seu código de configuração do Gemini vai aqui) ...
-MINHA_CHAVE_SECRETA = "AIzaSyAoLsdHr2CTXZVevr39qSjnY9PIm_9X7Xk" 
+MINHA_CHAVE_SECRETA = "AIzaSyBlwFvKwECM5lotVjBJGuCj55qGWct-7Es" 
 genai.configure(api_key=MINHA_CHAVE_SECRETA)
 instrucoes_do_sistema = """
-# PERSONA
+# PERSONA   
 Você é um Tutor Socrático, um especialista em aprendizado e um mentor de estudos. Seu nome é "Mentor". Seu objetivo principal não é dar respostas, mas sim guiar o estudante a construir o próprio conhecimento, garantindo que a base seja sólida. Você é paciente, encorajador e extremamente curioso sobre o processo de pensamento do estudante.
 
 
@@ -75,8 +76,10 @@ model = genai.GenerativeModel(
     model_name='gemini-pro-latest',
     system_instruction=instrucoes_do_sistema)
 
+
 model_exercicios = genai.GenerativeModel(
-    model_name="gemini-pro-latest"
+    model_name="gemini-pro-latest", 
+    generation_config={"response_mime_type": "application/json"}
 )
 
 # --- Início da Lógica do Servidor Web com Flask ---
@@ -84,7 +87,7 @@ model_exercicios = genai.GenerativeModel(
 app = Flask(__name__)
 CORS(app) 
 
-# --- NOVO: Criação das Tabelas ---
+# --- Criação das Tabelas ---
 # Ao iniciar o app, ele garante que as tabelas do models.py existam
 try:
     Base.metadata.create_all(bind=engine)
@@ -93,7 +96,7 @@ except Exception as e:
     print(f"ERRO ao criar tabelas: {e}")
 
 
-# --- NOVO: Gerenciamento da Sessão SQLAlchemy ---
+# --- Gerenciamento da Sessão SQLAlchemy ---
 # Vamos usar o 'g' do Flask para guardar a sessão por request
 @app.before_request
 def create_session():
@@ -162,6 +165,7 @@ def handle_register():
         # Erros inesperados
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
 
+#Rota 3: Login
 @app.route("/api/login", methods=['POST'])
 def handle_login():
     data = request.json
@@ -172,18 +176,21 @@ def handle_login():
         return jsonify({'success': False, 'error': 'E-mail e senha são obrigatórios'}), 400
 
     try:
-        # 1. Instanciamos os serviços
         repo = UserRepository(g.session)
         service = UserService(repo)
 
-        # 2. Chamamos um novo serviço de autenticação
-        #    (Veja a Seção 2 abaixo!)
         user = service.authenticate_user(email, senha)
         
-        return jsonify({'success': True, 'message': 'Login bem-sucedido!'})
+        return jsonify({
+            'success': True, 
+            'message': 'Login bem-sucedido!',
+            'user': {
+                'id': user.id,
+                'nome': user.nome
+            }
+        })
 
     except ValueError as e:
-        # Erro de autenticação (ex: "Senha inválida")
         return jsonify({'success': False, 'error': str(e)}), 401
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
@@ -192,59 +199,207 @@ def handle_login():
 @app.route("/api/generate-exercise", methods=['POST'])
 def generate_exercise():
     try:
-        topic = request.json.get("topic", "")
+        topic = request.json.get("topic", "Geral")
 
         prompt = f"""
-Você é um gerador de exercícios educacionais.
+        Você é um professor elaborando uma prova.
+        Crie uma questão de MÚLTIPLA ESCOLHA sobre o tópico: "{topic}".
+        
+        Regras:
+        1. Nível: Iniciante/Intermediário.
+        2. Deve ter exatamente 5 alternativas (A, B, C, D, E).
+        3. Apenas UMA alternativa correta.
+        4. NÃO diga qual é a resposta correta na saída.
+        
+        Sua saída deve ser EXCLUSIVAMENTE um JSON válido neste formato:
+        {{
+            "enunciado": "O texto da pergunta aqui...",
+            "alternativas": [
+                "A) Opção 1", "B) Opção 2", "C) Opção 3", "D) Opção 4", "E) Opção 5"
+            ]
+        }}
+        """
 
-Crie um exercício claro, objetivo e adequado ao nível iniciante sobre:
-
-Tópico: "{topic}"
-
-Regras:
-- Gere apenas o exercício, SEM resposta.
-- Seja simples e didático.
-"""
-
-        # 🔥 Aqui você NÃO usa o chat global
         response = model_exercicios.generate_content(prompt)
+        
+        # Obtém o texto da resposta com segurança
+        try:
+            texto_bruto = response.text
+        except Exception:
+            # Fallback caso o objeto response venha diferente
+            texto_bruto = str(response)
 
-        return jsonify({"exercise": response.text})
+        print("DEBUG RAW:", texto_bruto[:100]) # Log para conferência
+
+        # --- A MÁGICA DO REGEX (CORREÇÃO) ---
+        # Procura pelo padrão JSON: Começa com { e termina com }
+        # re.DOTALL faz o ponto (.) pegar também quebras de linha
+        match = re.search(r"\{[\s\S]*\}", texto_bruto)
+
+        if match:
+            json_limpo = match.group(0) # Pega apenas o conteúdo JSON
+            try:
+                exercicio_json = json.loads(json_limpo)
+                return jsonify(exercicio_json)
+            except json.JSONDecodeError as e:
+                print(f"Erro ao decodificar JSON extraído: {e}")
+                return jsonify({"error": "A IA gerou um JSON inválido"}), 500
+        else:
+            print("Nenhum JSON encontrado na resposta da IA")
+            return jsonify({"error": "Formato de resposta inválido da IA"}), 500
 
     except Exception as e:
-        print("Erro em /api/generate-exercise", e)
+        print("Erro CRÍTICO em /api/generate-exercise", e)
         return jsonify({"error": str(e)}), 500
 
-#Rota 5: Corrigir Exercícios
 @app.route("/api/correct-exercise", methods=['POST'])
 def correct_exercise():
     try:
-        exercise = request.json.get("exercise", "")
-        answer = request.json.get("answer", "")
+        data = request.json
+        exercise_data = data.get("exercise", "")
+        answer = data.get("answer", "")
+        user_id = data.get("user_id")
+        topic = data.get("topic")  # <--- Importante: Pegando o tópico para as estatísticas
 
+        # Validação básica
+        if not user_id:
+            return jsonify({"error": "user_id é obrigatório"}), 400
+
+        # Prompt para a IA corrigir
         prompt = f"""
-Você é um corretor educacional.
+        Você é um corretor de provas.
+        
+        Questão Original:
+        {str(exercise_data)}
 
-Corrija a resposta do aluno para o exercício abaixo.
+        Alternativa escolhida pelo aluno:
+        "{answer}"
 
-Exercício:
-{exercise}
+        Tarefa:
+        1. Identifique qual era a alternativa correta.
+        2. Verifique se o aluno acertou.
+        3. Explique o porquê.
 
-Resposta do aluno:
-{answer}
+        Sua saída deve ser EXCLUSIVAMENTE um JSON neste formato:
+        {{
+            "correcao_detalhada": "A resposta certa é X porque...",
+            "nota": 10,
+            "acertou": true
+        }}
+        """
 
-Escreva:
-1) Correção detalhada
-2) Nota de 0 a 10
-3) Explicação curta do que pode melhorar
-"""
-
+        # Chamada à IA
         response = model_exercicios.generate_content(prompt)
+        
+        # Limpeza e Extração do JSON da resposta
+        try:
+            texto_bruto = response.text
+            # Regex para pegar apenas o JSON (ignora textos extras)
+            match = re.search(r"\{[\s\S]*\}", texto_bruto)
+            if match:
+                dados_correcao = json.loads(match.group(0))
+            else:
+                raise ValueError("JSON não encontrado na resposta da IA")
+        except Exception:
+            # Fallback caso a IA não retorne JSON perfeito
+            dados_correcao = {
+                "correcao_detalhada": response.text,
+                "nota": 0,
+                "acertou": False
+            }
 
-        return jsonify({"correction": response.text})
+        # --- SALVAR NO BANCO ---
+        # Converte o objeto do exercício para string para salvar no banco
+        enunciado_str = json.dumps(exercise_data, ensure_ascii=False) if isinstance(exercise_data, dict) else str(exercise_data)
+
+        novo_historico = HistoricoExercicio(
+            id_usuario=user_id,
+            topico=topic,  # Salvando o tópico
+            enunciado_exercicio=enunciado_str,
+            resposta_aluno=answer,
+            feedback_ia=dados_correcao["correcao_detalhada"],
+            nota=dados_correcao["nota"],
+            acertou=dados_correcao["acertou"]
+        )
+        
+        g.session.add(novo_historico)
+        g.session.commit()
+
+        return jsonify({
+            "correction": dados_correcao["correcao_detalhada"],
+            "nota": dados_correcao["nota"],
+            "acertou": dados_correcao["acertou"],
+            "saved": True
+        })
+
+    except Exception as e:
+        # ⚠️ ESTE É O BLOCO QUE ESTAVA FALTANDO OU DESALINHADO
+        print("Erro em /api/correct-exercise", e)
+        # Importante: Desfazer a transação do banco se der erro
+        if hasattr(g, 'session'):
+            g.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# --- ROTA: Estatísticas (NOVA) ---
+@app.route("/api/user-stats/<int:user_id>", methods=['GET'])
+def get_user_stats(user_id):
+    try:
+        # Busca todo o histórico desse usuário
+        historico = g.session.query(HistoricoExercicio).filter(
+            HistoricoExercicio.id_usuario == user_id
+        ).all()
+
+        if not historico:
+            return jsonify({"stats": [], "global_average": 0, "total_questions": 0})
+
+        # Processamento dos dados (Agrupamento por Tópico)
+        stats_by_topic = {}
+        
+        for h in historico:
+            # Usa 'Geral' se o tópico for None ou vazio
+            topic_name = h.topico if h.topico else "Geral"
+            
+            # Normaliza o nome do tópico (ex: "matemática" e "Matemática" viram o mesmo)
+            topic_key = topic_name.strip().title()
+
+            if topic_key not in stats_by_topic:
+                stats_by_topic[topic_key] = {"total": 0, "acertos": 0}
+            
+            stats_by_topic[topic_key]["total"] += 1
+            if h.acertou:
+                stats_by_topic[topic_key]["acertos"] += 1
+
+        # Formata para enviar ao Frontend
+        final_stats = []
+        total_questions = 0
+        total_correct = 0
+
+        for topic, data in stats_by_topic.items():
+            percent = round((data["acertos"] / data["total"]) * 100, 1)
+            final_stats.append({
+                "topic": topic,
+                "total": data["total"],
+                "acertos": data["acertos"],
+                "percent": percent
+            })
+            
+            total_questions += data["total"]
+            total_correct += data["acertos"]
+
+        global_avg = round((total_correct / total_questions) * 100, 1) if total_questions > 0 else 0
+
+        # Ordena por % de acerto (opcional)
+        final_stats.sort(key=lambda x: x['percent'], reverse=True)
+
+        return jsonify({
+            "stats": final_stats,
+            "global_average": global_avg,
+            "total_questions": total_questions
+        })
 
     except Exception as e:
         print("Erro em /api/correct-exercise", e)
+        g.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 from typing import Any, Optional
 import datetime
 
-from sqlalchemy import DateTime, ForeignKeyConstraint, Integer, PrimaryKeyConstraint, String, UniqueConstraint, text
+from sqlalchemy import DateTime, ForeignKeyConstraint, Integer, PrimaryKeyConstraint, String, UniqueConstraint, text, Boolean, Text
 from sqlalchemy.dialects.postgresql import BIT
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -123,3 +123,28 @@ class QuestionarioXUsuario(Base):
 
     questionario: Mapped['Questionario'] = relationship('Questionario', back_populates='questionario_x_usuario')
     usuario: Mapped['Usuario'] = relationship('Usuario', back_populates='questionario_x_usuario')
+
+class HistoricoExercicio(Base):
+    __tablename__ = 'historico_exercicio'
+    __table_args__ = (
+        ForeignKeyConstraint(['id_usuario'], ['usuario.id'], name='fk_hist_usuario'),
+        PrimaryKeyConstraint('id', name='historico_exercicio_pkey')
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_usuario: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    topico: Mapped[str] = mapped_column(String(200), nullable=True) 
+
+    # O que foi gerado e respondido
+    enunciado_exercicio: Mapped[str] = mapped_column(Text, nullable=False)
+    resposta_aluno: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    # A correção da IA
+    feedback_ia: Mapped[str] = mapped_column(Text, nullable=False)
+    nota: Mapped[int] = mapped_column(Integer, nullable=False) # 0 a 10
+    acertou: Mapped[bool] = mapped_column(Boolean, nullable=False) # True/False
+    
+    data_tentativa: Mapped[datetime.datetime] = mapped_column(DateTime(True), server_default=text('now()'))
+
+    usuario: Mapped['Usuario'] = relationship('Usuario')
