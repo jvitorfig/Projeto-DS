@@ -1,4 +1,3 @@
-# app.py
 import re
 import json
 import google.generativeai as genai
@@ -6,30 +5,28 @@ import os
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from config import GEMINI_API_KEY  # <-- NOVO
+from config import GEMINI_API_KEY
 
 # --- Importações da sua nova arquitetura ---
-# (Assumindo que seus arquivos estão em pastas/módulos corretos)
-# (Ajuste os imports se sua estrutura de pastas for diferente)
 try:
     from db import SessionLocal, engine
-    from models.models import Base, HistoricoExercicio
+    from models.models import Base, Usuario, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
     from dtos.userDto import UserDto  # Embora não seja usado diretamente aqui, é bom saber
 except ImportError:
     print("ERRO DE IMPORTAÇÃO: Verifique sua estrutura de pastas e __init__.py")
-    # Tente imports locais se estiver tudo na mesma pasta (menos ideal)
     from db import SessionLocal, engine
     from models.models import Base, Usuario, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
 
+from ai_utils import extract_json_from_response
 
-# --- Configuração do Gemini (AGORA SEM CHAVE HARD-CODED) ---
-
+# --- Configuração do Gemini ---
 genai.configure(api_key=GEMINI_API_KEY)
 
 instrucoes_do_sistema = """
@@ -75,7 +72,7 @@ Após o aluno indicar o tópico, inicie a investigação aprofundada. Esta é a 
 3.  Use analogias e exemplos simples para explicar o conceito fundamental.
 4.  Após a explicação, verifique a compreensão pedindo para o estudante explicar de volta ou resolver um problema bem mais simples.
     * *Exemplo:* "Isso ajudou a clarear as coisas? Com base nisso, como você resolveria este pequeno problema [problema simples]?"
-"""  # Suas instruções
+"""
 
 model = genai.GenerativeModel(
     model_name='gemini-pro-latest',
@@ -87,27 +84,21 @@ model_exercicios = genai.GenerativeModel(
     generation_config={"response_mime_type": "application/json"}
 )
 
-# --- Início da Lógica do Servidor Web com Flask ---
-
 app = Flask(__name__)
 CORS(app)
 
 # --- Criação das Tabelas ---
-# Ao iniciar o app, ele garante que as tabelas do models.py existam
 try:
     Base.metadata.create_all(bind=engine)
     print("INFO: Tabelas do SQLAlchemy verificadas/criadas.")
 except Exception as e:
     print(f"ERRO ao criar tabelas: {e}")
 
-
 # --- Gerenciamento da Sessão SQLAlchemy ---
-# Vamos usar o 'g' do Flask para guardar a sessão por request
 @app.before_request
 def create_session():
     """Abre uma nova sessão no início de cada request."""
     g.session = SessionLocal()
-
 
 @app.teardown_request
 def close_session(e=None):
@@ -115,7 +106,6 @@ def close_session(e=None):
     session = g.pop('session', None)
     if session is not None:
         session.close()
-
 
 # --- Lógica do Chat ---
 try:
@@ -126,26 +116,21 @@ except Exception as e:
     print(f"Erro ao inicializar o chat com o Gemini: {e}")
     PRIMEIRA_MENSAGEM_MENTOR = "Olá! Tive um problema para me conectar. Por favor, tente recarregar a página."
 
-
 @app.route("/chat", methods=['POST'])
 def handle_chat():
     try:
         user_message = request.json['message']
         response = chat.send_message(user_message)
         return jsonify({'response': response.text})
-
     except Exception as e:
         print(f"Erro no endpoint /chat: {e}")
         return jsonify({'error': str(e)}), 500
-
 
 @app.route("/api/initial-message", methods=['GET'])
 def get_initial_message():
     return jsonify({'message': PRIMEIRA_MENSAGEM_MENTOR})
 
-
 # --- ROTAS DE AUTENTICAÇÃO ---
-
 @app.route("/api/register", methods=['POST'])
 def handle_register():
     data = request.json
@@ -156,20 +141,16 @@ def handle_register():
     try:
         repo = UserRepository(g.session)
         service = UserService(repo)
-
         new_user = service.create_user(nome, email, senha)
-
         return jsonify({
             'success': True,
             'message': 'Usuário cadastrado com sucesso!',
             'user_id': new_user.id
         }), 201
-
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
-
 
 @app.route("/api/login", methods=['POST'])
 def handle_login():
@@ -183,9 +164,7 @@ def handle_login():
     try:
         repo = UserRepository(g.session)
         service = UserService(repo)
-
         user = service.authenticate_user(email, senha)
-
         return jsonify({
             'success': True,
             'message': 'Login bem-sucedido!',
@@ -194,12 +173,10 @@ def handle_login():
                 'nome': user.nome
             }
         })
-
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 401
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
-
 
 # --- Rota: Gerar exercícios ---
 @app.route("/api/generate-exercise", methods=['POST'])
@@ -229,31 +206,17 @@ def generate_exercise():
         response = model_exercicios.generate_content(prompt)
 
         try:
-            texto_bruto = response.text
-        except Exception:
-            texto_bruto = str(response)
-
-        print("DEBUG RAW:", texto_bruto[:100])
-
-        match = re.search(r"\{[\s\S]*\}", texto_bruto)
-
-        if match:
-            json_limpo = match.group(0)
-            try:
-                exercicio_json = json.loads(json_limpo)
-                return jsonify(exercicio_json)
-            except json.JSONDecodeError as e:
-                print(f"Erro ao decodificar JSON extraído: {e}")
-                return jsonify({"error": "A IA gerou um JSON inválido"}), 500
-        else:
-            print("Nenhum JSON encontrado na resposta da IA")
-            return jsonify({"error": "Formato de resposta inválido da IA"}), 500
+            exercicio_json = extract_json_from_response(response)
+            return jsonify(exercicio_json)
+        except ValueError as e:
+            print("Erro ao extrair JSON em /api/generate-exercise:", e)
+            return jsonify({"error": "A IA gerou um JSON inválido"}), 500
 
     except Exception as e:
         print("Erro CRÍTICO em /api/generate-exercise", e)
         return jsonify({"error": str(e)}), 500
 
-
+# --- Rota: Corrigir exercícios ---
 @app.route("/api/correct-exercise", methods=['POST'])
 def correct_exercise():
     try:
@@ -261,7 +224,7 @@ def correct_exercise():
         exercise_data = data.get("exercise", "")
         answer = data.get("answer", "")
         user_id = data.get("user_id")
-        topic = data.get("topic")
+        topic = data.get("topic")  # tópico para as estatísticas
 
         if not user_id:
             return jsonify({"error": "user_id é obrigatório"}), 400
@@ -291,15 +254,11 @@ def correct_exercise():
         response = model_exercicios.generate_content(prompt)
 
         try:
-            texto_bruto = response.text
-            match = re.search(r"\{[\s\S]*\}", texto_bruto)
-            if match:
-                dados_correcao = json.loads(match.group(0))
-            else:
-                raise ValueError("JSON não encontrado na resposta da IA")
-        except Exception:
+            dados_correcao = extract_json_from_response(response)
+        except ValueError:
+            # Fallback caso a IA não retorne JSON perfeito
             dados_correcao = {
-                "correcao_detalhada": response.text,
+                "correcao_detalhada": response.text if hasattr(response, "text") else str(response),
                 "nota": 0,
                 "acertou": False
             }
@@ -332,8 +291,7 @@ def correct_exercise():
             g.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-
-# --- ROTA: Estatísticas ---
+# --- Rota: Estatísticas ---
 @app.route("/api/user-stats/<int:user_id>", methods=['GET'])
 def get_user_stats(user_id):
     try:
@@ -374,7 +332,6 @@ def get_user_stats(user_id):
             total_correct += data["acertos"]
 
         global_avg = round((total_correct / total_questions) * 100, 1) if total_questions > 0 else 0
-
         final_stats.sort(key=lambda x: x['percent'], reverse=True)
 
         return jsonify({
@@ -388,7 +345,6 @@ def get_user_stats(user_id):
         if hasattr(g, 'session'):
             g.session.rollback()
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
