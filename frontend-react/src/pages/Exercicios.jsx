@@ -7,13 +7,17 @@ import '../styles/exercicios.css';
 export default function ExercicioAI() {
   const [topic, setTopic] = useState("");
   const [exerciseData, setExerciseData] = useState(null); 
-  const [selectedAnswer, setSelectedAnswer] = useState("");
+  
+  // MUDANÇA 1: Usamos null para "nenhuma selecionada" e números (0-4) para as opções
+  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState(null);
+  
   const [correction, setCorrection] = useState(null);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [loadingCorrection, setLoadingCorrection] = useState(false);
   const navigate = useNavigate();
 
   const userId = localStorage.getItem('userId');
+  
   useEffect(() => {
       if (!userId) {
           navigate("/login");
@@ -27,7 +31,7 @@ export default function ExercicioAI() {
     setLoadingExercise(true);
     setExerciseData(null);
     setCorrection(null);
-    setSelectedAnswer("");
+    setSelectedAnswerIndex(null); // Reseta a seleção
 
     try {
       const response = await fetch("http://127.0.0.1:5000/api/generate-exercise", {
@@ -52,9 +56,10 @@ export default function ExercicioAI() {
     setLoadingExercise(false);
   };
 
-  // ✅ CORRIGIR EXERCÍCIO
+  // ✅ CORRIGIR EXERCÍCIO (Lógica Nova baseada em índices)
   const corrigirExercicio = async () => {
-    if (!selectedAnswer) {
+    // Validação estrita: null significa que não escolheu. 0 é uma escolha válida (Letra A)
+    if (selectedAnswerIndex === null) {
       alert("Por favor, selecione uma alternativa.");
       return;
     }
@@ -62,15 +67,19 @@ export default function ExercicioAI() {
     setLoadingCorrection(true);
 
     try {
+      // MUDANÇA 2: Enviamos o objeto exercise completo e o índice escolhido
+      const payload = { 
+        exercise: exerciseData,
+        answer_text: exerciseData.alternativas[selectedAnswerIndex], // Texto para salvar no histórico
+        answer_index: selectedAnswerIndex, // Índice para validação lógica
+        user_id: userId,
+        topic: topic 
+      };
+
       const response = await fetch("http://127.0.0.1:5000/api/correct-exercise", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          exercise: exerciseData,
-          answer: selectedAnswer,
-          user_id: userId,
-          topic: topic // <--- ATUALIZADO: Enviando o tópico para salvar estatísticas
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -108,7 +117,7 @@ export default function ExercicioAI() {
                 <input
                 type="text"
                 className="ex-input"
-                placeholder="Ex: Revolução Francesa, Logaritmos..."
+                placeholder="Ex: Revolução Francesa, Ponteiros em C..."
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 />
@@ -134,22 +143,40 @@ export default function ExercicioAI() {
             </div>
 
             <div className="alternativas-container">
-                {exerciseData.alternativas && exerciseData.alternativas.map((alt, index) => (
-                    <button 
-                        key={index} 
-                        className={`alt-btn ${selectedAnswer === alt ? 'selected' : ''}`}
-                        onClick={() => !correction && setSelectedAnswer(alt)}
-                        disabled={!!correction}
-                    >
-                        {alt}
-                    </button>
-                ))}
+                {exerciseData.alternativas && exerciseData.alternativas.map((alt, index) => {
+                    // Lógica para definir as cores dos botões
+                    let btnClass = 'alt-btn';
+                    
+                    if (correction) {
+                        // Se já corrigiu:
+                        if (index === exerciseData.indice_correta) {
+                            btnClass += ' correct-answer-highlight'; // A correta fica VERDE
+                        } else if (selectedAnswerIndex === index && !correction.acertou) {
+                            btnClass += ' wrong-answer-highlight'; // A errada que você clicou fica VERMELHA
+                        }
+                    } else {
+                        // Se ainda não corrigiu, apenas marca a selecionada de azul
+                        if (selectedAnswerIndex === index) btnClass += ' selected';
+                    }
+
+                    return (
+                        <button 
+                            key={index} 
+                            className={btnClass}
+                            onClick={() => !correction && setSelectedAnswerIndex(index)}
+                            disabled={!!correction}
+                        >
+                            {alt}
+                        </button>
+                    );
+                })}
             </div>
 
             {!correction && (
                 <button
                 onClick={corrigirExercicio}
-                disabled={loadingCorrection || !selectedAnswer}
+                // MUDANÇA 3: Validação correta para não travar no índice 0
+                disabled={loadingCorrection || selectedAnswerIndex === null}
                 className="ex-btn purple"
                 style={{ marginTop: '20px' }}
                 >

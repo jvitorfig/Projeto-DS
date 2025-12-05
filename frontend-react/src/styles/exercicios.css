@@ -329,3 +329,15 @@
     color: #9ca3af;
     text-align: right;
 }
+
+.correct-answer-highlight {
+    background-color: #4CAF50 !important; /* Verde */
+    color: white;
+    border-color: #4CAF50;
+}
+
+.wrong-answer-highlight {
+    background-color: #f44336 !important; /* Vermelho */
+    color: white;
+    border-color: #f44336;
+}
