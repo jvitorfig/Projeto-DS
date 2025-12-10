@@ -4,7 +4,7 @@ import logo from '../assets/logo.png'; // Importa o logo
 import perfil from '../assets/perfil.png'; // Importa o perfil
 
 // URL da sua API Flask
-const API_URL = 'http://127.0.0.1:5000';
+const API_URL = 'https://projeto-ds-qs25.onrender.com';
 
 function ChatPage() {
   const [messages, setMessages] = useState([]); // Guarda o histórico de msgs

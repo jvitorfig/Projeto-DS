@@ -4,7 +4,7 @@ import '../styles/login.css'; // 1. IMPORTANTE: Importa o mesmo CSS do Login
 import logo from '../assets/logo.png'; 
 
 // URL da sua API Flask
-const API_URL = 'http://127.0.0.1:5000';
+const API_URL = 'https://projeto-ds-qs25.onrender.com';
 
 export default function SignUp() {
   const [nome, setNome] = useState('');
@@ -45,7 +45,6 @@ export default function SignUp() {
   };
 
   return (
-    /* 2. Adicionei a classe login-body aqui para pegar o fundo preto e centralização */
     <div className="login-body">
       <form className="login-form" onSubmit={handleSubmit}>
         <header className="login-header">

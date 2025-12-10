@@ -4,13 +4,12 @@ import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import '../styles/exercicios.css';
 
+const API_URL = 'https://projeto-ds-qs25.onrender.com';
+
 export default function ExercicioAI() {
   const [topic, setTopic] = useState("");
   const [exerciseData, setExerciseData] = useState(null); 
-  
-  // MUDANÇA 1: Usamos null para "nenhuma selecionada" e números (0-4) para as opções
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState(null);
-  
   const [correction, setCorrection] = useState(null);
   const [loadingExercise, setLoadingExercise] = useState(false);
   const [loadingCorrection, setLoadingCorrection] = useState(false);
@@ -34,7 +33,7 @@ export default function ExercicioAI() {
     setSelectedAnswerIndex(null); // Reseta a seleção
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/generate-exercise", {
+      const response = await fetch(`${API_URL}/api/generate-exercise`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic }),
@@ -76,7 +75,7 @@ export default function ExercicioAI() {
         topic: topic 
       };
 
-      const response = await fetch("http://127.0.0.1:5000/api/correct-exercise", {
+      const response = await fetch(`${API_URL}/api/correct-exercise`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

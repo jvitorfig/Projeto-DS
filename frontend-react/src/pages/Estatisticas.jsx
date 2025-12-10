@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Trophy, Target, PieChart } from "lucide-react";
 import '../styles/exercicios.css';
 
+const API_URL = 'https://projeto-ds-qs25.onrender.com';
+
 export default function Estatisticas() {
   const [stats, setStats] = useState([]);
   const [globalData, setGlobalData] = useState({ average: 0, total: 0 });
@@ -22,7 +24,7 @@ export default function Estatisticas() {
     // 2. Definimos a função DENTRO do useEffect para evitar erros de ordem
     const fetchStats = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/user-stats/${userId}`);
+        const response = await fetch(`${API_URL}/api/user-stats/${userId}`);
         const data = await response.json();
         
         if (data.stats) {

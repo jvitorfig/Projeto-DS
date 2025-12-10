@@ -4,7 +4,7 @@ import '../styles/login.css'; // Importa o CSS
 import logo from '../assets/logo.png'; // Importa a imagem
 
 // URL da sua API Flask
-const API_URL = 'http://127.0.0.1:5000';
+const API_URL = 'https://projeto-ds-qs25.onrender.com';
 
 function LoginPage() {
   const [email, setEmail] = useState('');

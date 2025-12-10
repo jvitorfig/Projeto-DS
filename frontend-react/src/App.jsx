@@ -5,7 +5,7 @@ import LoginPage from './pages/LoginPage';
 import ChatPage from './pages/ChatPage';
 import SingPage from './pages/sing-up';
 import Exercicio from './pages/Exercicios';
-import Estatisticas from './pages/Estatisticas'; // <--- 1. ADICIONEI ISSO AQUI
+import Estatisticas from './pages/Estatisticas';
 
 // Verificação de Login
 const estaLogado = () => {
@@ -28,7 +28,7 @@ function App() {
         <Route path="/exercicios" element={<Exercicio/>} />
 
         {/* Rota de Estatísticas (NOVA) */}
-        <Route path="/estatisticas" element={<Estatisticas/>} /> {/* <--- 2. ADICIONEI A ROTA AQUI */}
+        <Route path="/estatisticas" element={<Estatisticas/>} />
 
         {/* Rota do Chat (Privada) */}
         <Route 
