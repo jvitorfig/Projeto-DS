@@ -2,6 +2,7 @@ import re
 import json
 import google.generativeai as genai
 import os
+import sys
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 
@@ -11,9 +12,8 @@ try:
     from models.models import Base, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
-    # from dtos.userDto import UserDto 
 except ImportError:
-    print("AVISO: Usando imports locais (verifique estrutura de pastas se der erro)")
+    print("AVISO: Usando imports locais.")
     from db import SessionLocal, engine
     from models.models import Base, HistoricoExercicio
     from repositories.userRepository import UserRepository
@@ -22,35 +22,73 @@ except ImportError:
 # --- Configuração do Gemini ---
 MINHA_CHAVE_SECRETA = os.getenv("MINHA_CHAVE_SECRETA")
 if not MINHA_CHAVE_SECRETA:
-    print("AVISO: A variável de ambiente MINHA_CHAVE_SECRETA não foi encontrada.")
+    print("ERRO CRÍTICO: Chave API não encontrada!")
 
 genai.configure(api_key=MINHA_CHAVE_SECRETA)
 
 instrucoes_do_sistema = """
-# PERSONA   
-Você é um Tutor Socrático, um especialista em aprendizado e um mentor de estudos. Seu nome é "Mentor". Seu objetivo principal não é dar respostas, mas sim guiar o estudante a construir o próprio conhecimento.
+Você é um Tutor Socrático chamado "Mentor". 
+NUNCA dê a resposta direta. Faça perguntas para guiar o aluno.
+Seja encorajador e paciente.
+"""
 
-# DIRETRIZ PRINCIPAL (A REGRA DE OURO)
-NUNCA ensine o conteúdo ou dê a resposta diretamente. Sua primeira e mais importante missão é investigar a CAUSA RAIZ do problema através de perguntas direcionadas.
+# --- SELEÇÃO AUTOMÁTICA DE MODELO (A MÁGICA) ---
+def escolher_melhor_modelo():
+    """Lista os modelos disponíveis na sua conta e pega o melhor."""
+    print("--- INICIANDO BUSCA DE MODELOS ---")
+    try:
+        modelos_disponiveis = []
+        melhor_modelo_chat = None
+        melhor_modelo_exercicio = None
 
-# PROCESSO DE ATENDIMENTO
-1. Apresente-se cordialmente.
-2. Pergunte qual a dificuldade.
-3. Investigue a base (pré-requisitos).
-4. Só explique depois de diagnosticar.
-""" 
+        # Pede ao Google a lista real
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                print(f"Modelo encontrado: {m.name}")
+                modelos_disponiveis.append(m.name)
+                
+                # Lógica de preferência
+                if "1.5-pro" in m.name and "latest" not in m.name:
+                    melhor_modelo_chat = m.name
+                if "1.5-flash" in m.name and "latest" not in m.name:
+                    melhor_modelo_exercicio = m.name
 
+        # Se não achou os preferidos, pega o primeiro da lista que seja 'gemini'
+        if not melhor_modelo_chat:
+             # Tenta achar qualquer um com 'gemini'
+            melhor_modelo_chat = next((m for m in modelos_disponiveis if 'gemini' in m), 'models/gemini-pro')
+        
+        if not melhor_modelo_exercicio:
+            melhor_modelo_exercicio = mejor_modelo_chat
+
+        print(f"--- MODELOS ESCOLHIDOS ---")
+        print(f"Chat: {melhor_modelo_chat}")
+        print(f"Exercícios: {melhor_modelo_exercicio}")
+        
+        return mejor_modelo_chat, melhor_modelo_exercicio
+
+    except Exception as e:
+        print(f"ERRO AO LISTAR MODELOS: {e}")
+        # Fallback de emergência
+        return "models/gemini-1.5-flash", "models/gemini-1.5-flash"
+
+# Executa a escolha agora
+NOME_MODELO_CHAT, NOME_MODELO_EXERCICIO = escolher_melhor_modelo()
+
+# Configura os objetos com os nomes descobertos
 model = genai.GenerativeModel(    
-    model_name='gemini-pro', # Versão 1.0 (Infalível)
+    model_name=NOME_MODELO_CHAT,
     system_instruction=instrucoes_do_sistema
 )
 
 model_exercicios = genai.GenerativeModel(
-    model_name="gemini-pro", # Usamos o Pro aqui também pois o 1.0 não tem Flash
+    model_name=NOME_MODELO_EXERCICIO, 
     generation_config={"response_mime_type": "application/json"}
 )
+
 # --- Início da Aplicação Flask ---
 app = Flask(__name__)
+# ... O resto do código continua igual ...
 CORS(app) 
 
 # --- Criação das Tabelas ---
