@@ -1,0 +1,6 @@
+flask
+flask-cors
+gunicorn
+google-generativeai
+sqlalchemy
+psycopg2-binary
