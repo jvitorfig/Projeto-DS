@@ -73,12 +73,12 @@ Após o aluno indicar o tópico, inicie a investigação aprofundada. Esta é a 
     * *Exemplo:* "Isso ajudou a clarear as coisas? Com base nisso, como você resolveria este pequeno problema [problema simples]?"
 """ # Suas instruções
 model = genai.GenerativeModel(    
-    model_name='gemini-2.5-pro',
+    model_name='gemini-1.5-flash',
     system_instruction=instrucoes_do_sistema)
 
 
 model_exercicios = genai.GenerativeModel(
-    model_name="gemini-2.5-pro", 
+    model_name="gemini-1.5-flash", 
     generation_config={"response_mime_type": "application/json"}
 )
 
