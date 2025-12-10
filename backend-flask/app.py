@@ -41,15 +41,14 @@ NUNCA ensine o conteúdo ou dê a resposta diretamente. Sua primeira e mais impo
 """ 
 
 model = genai.GenerativeModel(    
-    model_name='gemini-1.5-pro-001', # Adicionado o -001
+    model_name='gemini-pro', # Versão 1.0 (Infalível)
     system_instruction=instrucoes_do_sistema
 )
 
 model_exercicios = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-001", # Adicionado o -001
+    model_name="gemini-pro", # Usamos o Pro aqui também pois o 1.0 não tem Flash
     generation_config={"response_mime_type": "application/json"}
 )
-
 # --- Início da Aplicação Flask ---
 app = Flask(__name__)
 CORS(app) 
