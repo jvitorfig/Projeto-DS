@@ -1,4 +1,3 @@
-# app.py
 import re
 import json
 import google.generativeai as genai
@@ -6,125 +5,108 @@ import os
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 
-# --- Importações da sua nova arquitetura ---
-# (Assumindo que seus arquivos estão em pastas/módulos corretos)
-# (Ajuste os imports se sua estrutura de pastas for diferente)
+# --- Importações da sua arquitetura ---
 try:
     from db import SessionLocal, engine
     from models.models import Base, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
-    from dtos.userDto import UserDto # Embora não seja usado diretamente aqui, é bom saber
+    # from dtos.userDto import UserDto 
 except ImportError:
-    print("ERRO DE IMPORTAÇÃO: Verifique sua estrutura de pastas e __init__.py")
-    # Tente imports locais se estiver tudo na mesma pasta (menos ideal)
+    print("AVISO: Usando imports locais (verifique estrutura de pastas se der erro)")
     from db import SessionLocal, engine
-    from models.models import Base, Usuario, HistoricoExercicio
+    from models.models import Base, HistoricoExercicio
     from repositories.userRepository import UserRepository
     from service.userService import UserService
 
-
-# --- Configuração do Gemini (Sem Alterações) ---
-# ... (seu código de configuração do Gemini vai aqui) ...
+# --- Configuração do Gemini ---
 MINHA_CHAVE_SECRETA = os.getenv("MINHA_CHAVE_SECRETA")
+if not MINHA_CHAVE_SECRETA:
+    print("AVISO: A variável de ambiente MINHA_CHAVE_SECRETA não foi encontrada.")
+
 genai.configure(api_key=MINHA_CHAVE_SECRETA)
+
 instrucoes_do_sistema = """
 # PERSONA   
-Você é um Tutor Socrático, um especialista em aprendizado e um mentor de estudos. Seu nome é "Mentor". Seu objetivo principal não é dar respostas, mas sim guiar o estudante a construir o próprio conhecimento, garantindo que a base seja sólida. Você é paciente, encorajador e extremamente curioso sobre o processo de pensamento do estudante.
-
+Você é um Tutor Socrático, um especialista em aprendizado e um mentor de estudos. Seu nome é "Mentor". Seu objetivo principal não é dar respostas, mas sim guiar o estudante a construir o próprio conhecimento.
 
 # DIRETRIZ PRINCIPAL (A REGRA DE OURO)
-NUNCA ensine o conteúdo ou dê a resposta diretamente. Sua primeira e mais importante missão é investigar a CAUSA RAIZ do problema através de perguntas direcionadas. Apenas após diagnosticar a lacuna no conhecimento, você pode começar a ensinar, focando especificamente no ponto fraco identificado.
+NUNCA ensine o conteúdo ou dê a resposta diretamente. Sua primeira e mais importante missão é investigar a CAUSA RAIZ do problema através de perguntas direcionadas.
 
-#CARACTERÍSTICAS
-Você não deve falar sobre assuntos não relacionados ao estudo, caso o aluno fale sobre um tema paralelo, você deverá dizer que não pode responder essa pergunta
+# PROCESSO DE ATENDIMENTO
+1. Apresente-se cordialmente.
+2. Pergunte qual a dificuldade.
+3. Investigue a base (pré-requisitos).
+4. Só explique depois de diagnosticar.
+""" 
 
-
-# PROCESSO DE ATENDIMENTO (PASSO A PASSO)
-
-**PASSO 1: ACOLHIMENTO E DIAGNÓSTICO INICIAL**
-1. Apresente-se cordialmente como "Mentor" e explique que seu objetivo é entender a raiz da dificuldade.
-2. A sua PRIMEIRA FALA na conversa deve ser sempre uma pergunta aberta para que o aluno descreva suas dificuldades gerais.
-3. Exemplo de primeira fala: "Olá! Eu sou o Mentor, seu tutor de estudos. Meu objetivo é te ajudar a entender de verdade a raiz das suas dificuldades. Para começarmos, me conte: em qual matéria ou tópico você está encontrando mais desafios no momento?"
-
-**PASSO 2: INVESTIGAÇÃO DA CAUSA RAIZ (FASE DE DIAGNÓSTICO)**
-Após o aluno indicar o tópico, inicie a investigação aprofundada. Esta é a fase mais crítica. Não avance para o Passo 3 até ter uma hipótese clara da dificuldade. Use as seguintes técnicas:
-
-* **Verificar Pré-requisitos:** Pergunte sobre conceitos fundamentais necessários para entender o tópico principal.
-    * *Exemplo (se a dificuldade for em "Derivadas"):* "Claro, vamos chegar em derivadas. Mas antes, para eu entender melhor onde estamos, você poderia me explicar o que você entende por 'limite de uma função'?"
-    * *Exemplo (se a dificuldade for em "Ponteiros em C"):* "Entendido. Ponteiros são um ótimo assunto. Antes de mergulharmos nisso, me diga com suas palavras: o que é uma variável e como você imagina que ela é guardada na memória do computador?"
-
-* **Testar a Compreensão Conceitual:** Peça ao estudante para explicar o que ele *já sabe* sobre o tópico com as próprias palavras, mesmo que ache que está errado.
-    * *Exemplo:* "Não se preocupe em acertar. Apenas me diga o que vem à sua mente quando você ouve o termo 'recursividade'."
-
-* **Simplificar e Quebrar o Problema:** Se a pergunta for um exercício, peça para ele explicar qual foi a primeira parte que o deixou confuso.
-    * *Exemplo:* "Ok, vamos olhar para este problema. Não precisa resolver tudo. Qual é o primeiro passo que você tentou dar? O que você pensou em fazer primeiro?"
-
-**PASSO 3: CONFIRMAÇÃO DO DIAGNÓSTICO**
-1. Após a investigação, formule uma hipótese sobre a dificuldade real.
-2. Apresente essa hipótese ao estudante de forma colaborativa.
-    * *Exemplo:* "Obrigado por explicar. Pelo que você me disse, parece que a principal dificuldade não é com as derivadas em si, mas em como simplificar as expressões algébricas antes de aplicar as regras. Faz sentido para você?"
-
-**PASSO 4: ENSINO DIRECIONADO (FASE DE TRATAMENTO)**
-1.  **Somente agora**, depois do diagnóstico confirmado, você pode ensinar.
-2.  Concentre sua explicação **especificamente na causa raiz** que você identificou (ex: na simplificação algébrica, no conceito de memória, etc.).
-3.  Use analogias e exemplos simples para explicar o conceito fundamental.
-4.  Após a explicação, verifique a compreensão pedindo para o estudante explicar de volta ou resolver um problema bem mais simples.
-    * *Exemplo:* "Isso ajudou a clarear as coisas? Com base nisso, como você resolveria este pequeno problema [problema simples]?"
-""" # Suas instruções
+# Configuração dos Modelos
 model = genai.GenerativeModel(    
     model_name='gemini-2.5-pro',
-    system_instruction=instrucoes_do_sistema)
-
+    system_instruction=instrucoes_do_sistema
+)
 
 model_exercicios = genai.GenerativeModel(
     model_name="gemini-2.5-pro", 
     generation_config={"response_mime_type": "application/json"}
 )
 
-# --- Início da Lógica do Servidor Web com Flask ---
-
+# --- Início da Aplicação Flask ---
 app = Flask(__name__)
 CORS(app) 
 
 # --- Criação das Tabelas ---
-# Ao iniciar o app, ele garante que as tabelas do models.py existam
 try:
     Base.metadata.create_all(bind=engine)
     print("INFO: Tabelas do SQLAlchemy verificadas/criadas.")
 except Exception as e:
     print(f"ERRO ao criar tabelas: {e}")
 
-
 # --- Gerenciamento da Sessão SQLAlchemy ---
-# Vamos usar o 'g' do Flask para guardar a sessão por request
 @app.before_request
 def create_session():
-    """Abre uma nova sessão no início de cada request."""
     g.session = SessionLocal()
 
 @app.teardown_request
 def close_session(e=None):
-    """Fecha a sessão no final de cada request."""
     session = g.pop('session', None)
     if session is not None:
         session.close()
 
+# --- NOVA ROTA: Health Check (Corrige o erro 404) ---
+@app.route("/", methods=['GET'])
+def home():
+    return jsonify({
+        "status": "online",
+        "message": "API do Mentor de Estudos está rodando corretamente! 🚀",
+        "endpoints": ["/chat", "/api/login", "/api/register", "/api/generate-exercise"]
+    })
 
-# --- Lógica do Chat (Sem Alterações) ---
-try:
-    chat = model.start_chat(history=[])
-    inicial_response = chat.send_message("Ola")
-    PRIMEIRA_MENSAGEM_MENTOR = inicial_response.text
-except Exception as e:
-    print(f"Erro ao inicializar o chat com o Gemini: {e}")
-    PRIMEIRA_MENSAGEM_MENTOR = "Olá! Tive um problema para me conectar. Por favor, tente recarregar a página."
+# --- Lógica do Chat (CORRIGIDA) ---
+# Removemos a chamada global que travava o servidor.
+# Definimos uma mensagem padrão rápida para não depender da IA no boot.
+PRIMEIRA_MENSAGEM_PADRAO = "Olá! Eu sou o Mentor, seu tutor de estudos. Meu objetivo é te ajudar a entender de verdade a raiz das suas dificuldades. Para começarmos, me conte: em qual matéria ou tópico você está encontrando mais desafios no momento?"
+
+@app.route("/api/initial-message", methods=['GET'])
+def get_initial_message():
+    # Retorna a mensagem fixa instantaneamente
+    return jsonify({'message': PRIMEIRA_MENSAGEM_PADRAO})
 
 @app.route("/chat", methods=['POST'])
 def handle_chat():
     try:
-        user_message = request.json['message']
-        response = chat.send_message(user_message)
+        data = request.json
+        user_message = data.get('message')
+        
+        # IMPORTANTE: Para manter o contexto, o Frontend idealmente deveria enviar
+        # o histórico da conversa. Aqui estamos criando um chat "fresco" a cada request
+        # ou tentando usar o histórico se o front enviar (history).
+        history = data.get('history', []) 
+        
+        # Inicia uma sessão de chat isolada para este request
+        chat_session = model.start_chat(history=history)
+        
+        response = chat_session.send_message(user_message)
         return jsonify({'response': response.text})
     
     except Exception as e:
@@ -132,13 +114,7 @@ def handle_chat():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route("/api/initial-message", methods=['GET'])
-def get_initial_message():
-    return jsonify({'message': PRIMEIRA_MENSAGEM_MENTOR})
-# --- Fim da Lógica do Chat ---
-
-
-# --- ROTAS DE AUTENTICAÇÃO (Totalmente Reescritas) ---
+# --- ROTAS DE AUTENTICAÇÃO ---
 
 @app.route("/api/register", methods=['POST'])
 def handle_register():
@@ -148,24 +124,17 @@ def handle_register():
     senha = data.get('senha')
 
     try:
-        # 1. Instanciamos os serviços com a sessão do request (g.session)
         repo = UserRepository(g.session)
         service = UserService(repo)
-        
-        # 2. Chamamos o serviço (que precisa ser ajustado para senhas)
-        #    (Veja a Seção 2 abaixo!)
         new_user = service.create_user(nome, email, senha)
         
-        return jsonify({'success': True, 'message': 'Usuário cadastrado com sucesso!', 'user_id': new_user.id}), 201
+        return jsonify({'success': True, 'message': 'Usuário cadastrado!', 'user_id': new_user.id}), 201
     
     except ValueError as e:
-        # Erros de negócio (ex: "E-mail já existe")
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        # Erros inesperados
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
 
-#Rota 3: Login
 @app.route("/api/login", methods=['POST'])
 def handle_login():
     data = request.json
@@ -178,16 +147,12 @@ def handle_login():
     try:
         repo = UserRepository(g.session)
         service = UserService(repo)
-
         user = service.authenticate_user(email, senha)
         
         return jsonify({
             'success': True, 
             'message': 'Login bem-sucedido!',
-            'user': {
-                'id': user.id,
-                'nome': user.nome
-            }
+            'user': {'id': user.id, 'nome': user.nome}
         })
 
     except ValueError as e:
@@ -195,13 +160,12 @@ def handle_login():
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro interno: {str(e)}'}), 500
         
-# Rota 4: Gerar exercícios
+# --- GERAÇÃO DE EXERCÍCIOS ---
 @app.route("/api/generate-exercise", methods=['POST'])
 def generate_exercise():
     try:
         topic = request.json.get("topic", "Geral")
 
-        # Configuração do prompt para já trazer TUDO
         prompt = f"""
         Você é um professor elaborando uma prova.
         Crie uma questão de MÚLTIPLA ESCOLHA sobre o tópico: "{topic}".
@@ -210,21 +174,19 @@ def generate_exercise():
         1. Nível: Iniciante/Intermediário.
         2. Deve ter exatamente 5 alternativas.
         3. Indique qual o INDICE (0 a 4) da alternativa correta.
-        4. Forneça uma explicação detalhada (feedback) do porquê aquela é a correta.
+        4. Forneça uma explicação detalhada (feedback).
         
         Sua saída deve ser EXCLUSIVAMENTE um JSON neste formato:
         {{
             "enunciado": "Texto da pergunta...",
             "alternativas": ["A) ...", "B) ...", "C) ...", "D) ...", "E) ..."],
-            "indice_correta": 2,  // Exemplo: 0 para A, 1 para B...
+            "indice_correta": 2,
             "explicacao": "A resposta C é correta porque..."
         }}
         """
 
-        # Recomendado: Use o modelo flash para ser mais rápido e preciso no JSON
         response = model_exercicios.generate_content(prompt)
         
-        # Lógica de extração do JSON (mesma de antes)
         texto_bruto = response.text
         match = re.search(r"\{[\s\S]*\}", texto_bruto)
 
@@ -241,27 +203,19 @@ def generate_exercise():
 def correct_exercise():
     try:
         data = request.json
-        
-        # Dados vindos do Front
         user_id = int(data.get("user_id"))
         topic = data.get("topic")
-        exercise_data = data.get("exercise") # O objeto completo da questão
-        answer_text = data.get("answer_text") # Texto da resposta do aluno (ex: "B) Opção...")
-        answer_index = data.get("answer_index") # Índice que o aluno clicou (0, 1...)
+        exercise_data = data.get("exercise")
+        answer_text = data.get("answer_text")
+        answer_index = data.get("answer_index")
 
-        # 1. Validação Lógica (Back-end validando a verdade)
         indice_gabarito = exercise_data.get("indice_correta")
-        
         acertou = (answer_index == indice_gabarito)
         nota = 10 if acertou else 0
-        
-        # Usa a explicação que já veio na geração
         feedback = exercise_data.get("explicacao", "Sem feedback disponível.")
 
-        # 2. Salvar no Banco (PostgreSQL)
         try:
             enunciado_str = json.dumps(exercise_data, ensure_ascii=False)
-            
             novo_historico = HistoricoExercicio(
                 id_usuario=user_id,
                 topico=topic,
@@ -271,14 +225,11 @@ def correct_exercise():
                 nota=nota,
                 acertou=acertou
             )
-            
             g.session.add(novo_historico)
             g.session.commit()
-            
         except Exception as db_e:
             g.session.rollback()
             print(f"Erro ao salvar no banco: {db_e}")
-            # Não paramos o fluxo, apenas logamos o erro
 
         return jsonify({
             "correction": feedback,
@@ -294,25 +245,17 @@ def correct_exercise():
 @app.route("/api/user-stats/<int:user_id>", methods=['GET'])
 def get_user_stats(user_id):
     try:
-        # Busca todo o histórico desse usuário no PostgreSQL
         historico = g.session.query(HistoricoExercicio).filter(
             HistoricoExercicio.id_usuario == user_id
         ).all()
 
         if not historico:
-            return jsonify({
-                "stats": [], 
-                "global_average": 0, 
-                "total_questions": 0
-            })
+            return jsonify({"stats": [], "global_average": 0, "total_questions": 0})
 
-        # Processamento dos dados (Agrupamento por Tópico em Memória)
         stats_by_topic = {}
-        
         for h in historico:
-            # Tratamento de erro caso o tópico venha vazio do banco
             raw_topic = h.topico if h.topico else "Geral"
-            topic_key = raw_topic.strip().title() # Padroniza "matemática" e "Matemática"
+            topic_key = raw_topic.strip().title()
 
             if topic_key not in stats_by_topic:
                 stats_by_topic[topic_key] = {"total": 0, "acertos": 0}
@@ -321,7 +264,6 @@ def get_user_stats(user_id):
             if h.acertou:
                 stats_by_topic[topic_key]["acertos"] += 1
 
-        # Formata para enviar ao Frontend (Exatamente como o React espera)
         final_stats = []
         total_questions = 0
         total_correct = 0
@@ -334,13 +276,10 @@ def get_user_stats(user_id):
                 "acertos": data["acertos"],
                 "percent": percent
             })
-            
             total_questions += data["total"]
             total_correct += data["acertos"]
 
         global_avg = round((total_correct / total_questions) * 100, 1) if total_questions > 0 else 0
-
-        # Ordena: Tópicos com pior desempenho aparecem primeiro (para foco de estudo)
         final_stats.sort(key=lambda x: x['percent'])
 
         return jsonify({
@@ -354,4 +293,5 @@ def get_user_stats(user_id):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
