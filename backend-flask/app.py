@@ -42,12 +42,12 @@ NUNCA ensine o conteúdo ou dê a resposta diretamente. Sua primeira e mais impo
 
 # Configuração dos Modelos
 model = genai.GenerativeModel(    
-    model_name='gemini-2.5-pro',
+    model_name='gemini-1.5-pro',
     system_instruction=instrucoes_do_sistema
 )
 
 model_exercicios = genai.GenerativeModel(
-    model_name="gemini-2.5-pro", 
+    model_name="gemini-1.5-flash", 
     generation_config={"response_mime_type": "application/json"}
 )
 
