@@ -59,13 +59,13 @@ def escolher_melhor_modelo():
             melhor_modelo_chat = next((m for m in modelos_disponiveis if 'gemini' in m), 'models/gemini-pro')
         
         if not melhor_modelo_exercicio:
-            melhor_modelo_exercicio = mejor_modelo_chat
+            melhor_modelo_exercicio = melhor_modelo_chat
 
         print(f"--- MODELOS ESCOLHIDOS ---")
         print(f"Chat: {melhor_modelo_chat}")
         print(f"Exercícios: {melhor_modelo_exercicio}")
         
-        return mejor_modelo_chat, melhor_modelo_exercicio
+        return melhor_modelo_chat, melhor_modelo_exercicio
 
     except Exception as e:
         print(f"ERRO AO LISTAR MODELOS: {e}")
